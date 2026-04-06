@@ -2,7 +2,7 @@
 const firebaseConfig = {
     apiKey: "AIzaSyDKkr93ANx2TbmWhD1BQNEU4b_rEHEOkyk",
     authDomain: "zero-medical-cs-260406.firebaseapp.com",
-    databaseURL: "https://zero-medical-cs-260406-default-rtdb.asia-southeast1.firebasedatabase.app",
+    databaseURL: "https://chatbot-zeromedical-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "zero-medical-cs-260406",
     storageBucket: "zero-medical-cs-260406.firebasestorage.app",
     messagingSenderId: "255166539730",
