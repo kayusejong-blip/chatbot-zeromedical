@@ -5,6 +5,7 @@ let nodeHistory = []; // 뒤로 가기 추적 배열
 let currentNode = null; // 현재 노드 추적 변수
 let nextTimeout = null; // 자동 이동 타이머 추적
 let currentSessionStatus = ""; // 서버(Firebase)와 동기화되는 상태
+let treeResponses = {}; // Firebase에서 동기화되는 커스텀 트리 응답 데이터
 
 function initChat() {
     try {
@@ -53,6 +54,11 @@ function initFirebaseSync() {
              currentSessionStatus = data.status;
          }
     });
+
+    // 커스텀 답변 트리 설정 동기화
+    db.ref('settings/responses').on('value', snapshot => {
+         treeResponses = snapshot.val() || {};
+    });
 }
 
 function startFlow() {
@@ -87,29 +93,45 @@ function handleNode(node, isBack = false) {
     } 
     // 액션 노드 처리
     else if (node.type === "send_video_link") {
-        let videoTitle = "추천 영상";
+        let defaultTitle = "추천 영상";
         let targetUrl = "";
         
         if (node.video_key) {
             const videoInfo = chatData.video_db.videos.find(v => v.key === node.video_key);
-            if (videoInfo) {
-                videoTitle = videoInfo.title;
-                targetUrl = videoInfo.url || "";
+            if (videoInfo) defaultTitle = videoInfo.title;
+        }
+
+        // Firebase 커스텀 트리 응답 덮어쓰기 로직
+        // node.triggerId는 handleNext()에서 전달해준 현재 리프의 ID입니다. (예: L2_PRE_SPEC)
+        let customText = null;
+        if (node.triggerId && treeResponses[node.triggerId]) {
+            let customResponse = treeResponses[node.triggerId];
+            if (customResponse.url && customResponse.url.trim() !== "") {
+                targetUrl = customResponse.url;
             }
-            
-            // Firebase 관리자 오버라이드 확인 (async지만 챗봇 구조상 임시동기화된 변수 사용 권장)
-            // 편의상 이 부분은 프로토타입 유지 (로컬로 일단 두거나 생략 가능)
-            let customLinks = JSON.parse(localStorage.getItem('customVideoLinks') || '{}');
-            if (customLinks[node.video_key] && customLinks[node.video_key].trim() !== "") {
-                targetUrl = customLinks[node.video_key];
+            if (customResponse.text && customResponse.text.trim() !== "") {
+                customText = customResponse.text;
             }
         }
 
-        let videoHtml;
-        if (targetUrl && targetUrl.trim() !== "") {
-            videoHtml = `아래 영상을 참고해서 점검해 보세요 😊<br><br><strong>[${videoTitle}]</strong><br><a href="${targetUrl}" target="_blank" class="video-link" style="background:#ef4444; border-color:#dc2626;">📺 유튜브/가이드 영상 시청하기 (새창)</a><br><br>영상대로 해결되셨나요?`;
+        let videoHtml = "";
+        // 커스텀 텍스트가 있으면 무조건 그것을 기본 본문으로 사용
+        if (customText) {
+            videoHtml += customText + "<br><br>";
         } else {
-            videoHtml = `아래 영상을 참고해서 점검해 보세요 😊<br><br><strong>[${videoTitle}]</strong><br><a href="#" class="video-link" style="background:#6B7280; border-color:#4B5563;" onclick="event.preventDefault(); alert('영상이 아직 준비되지 않았습니다.\\n(관리자 모드에서 링크를 매핑해 주세요)');">🚫 스마트 가이드 준비중</a><br><br>영상대로 해결되셨나요?`;
+            videoHtml += `아래 영상을 참고해서 점검해 보세요 😊<br><br>`;
+        }
+
+        if (targetUrl && targetUrl.trim() !== "") {
+            videoHtml += `<strong>[${defaultTitle}]</strong><br><a href="${targetUrl}" target="_blank" class="video-link" style="background:#ef4444; border-color:#dc2626;">📺 유튜브/가이드 영상 시청하기 (새창)</a><br><br>도움이 되셨나요?`;
+        } else {
+            // URL이 없고 커스텀 텍스트도 없으면 기존 로직(준비중)
+            if (!customText) {
+                videoHtml += `<strong>[${defaultTitle}]</strong><br><a href="#" class="video-link" style="background:#6B7280; border-color:#4B5563;" onclick="event.preventDefault(); alert('영상이 아직 준비되지 않았습니다.\\n(관리자 모드에서 링크를 매핑해 주세요)');">🚫 스마트 가이드 준비중</a><br><br>영상대로 해결되셨나요?`;
+            } else {
+                // URL은 없고 커스텀 텍스트만 있다면
+                videoHtml += `도움이 되셨나요?`;
+            }
         }
         
         nextTimeout = setTimeout(() => {
@@ -117,22 +139,30 @@ function handleNode(node, isBack = false) {
             if (node.follow_up && node.follow_up.options) {
                 showOptions(node.follow_up.options);
             }
-
         }, 800);
     } 
     else if (node.type === "request_customer_video") {
-        // 파일 첨부 전용 옵션 및 뒤로 가기 제공
+        let contentHtml = node.message;
+        // 커스텀 텍스트 덮어쓰기
+        if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
+            contentHtml = treeResponses[node.triggerId].text.replace(/\n/g, '<br>');
+        }
+        addMessage(contentHtml, "bot");
+
         showOptions([
             { label: "📷 사진/영상 첨부하기", action: "UPLOAD" },
             { label: "🔄 처음으로 돌아가기", next: "RESTART" }
         ]);
-        // 타이머 자동 이동 로직 삭제 (사용자가 업로드할 시간을 주어야 함)
     }
     else if (node.type === "escalate" || node.type === "end") {
-        // 종료 상태 저장
+        let contentHtml = node.message;
+        if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
+            contentHtml = treeResponses[node.triggerId].text.replace(/\n/g, '<br>');
+        }
+        addMessage(contentHtml, "bot");
+
         saveSessionToStorage(node.type === "end" ? "해결 완료" : "상담원 연결 요망");
 
-        // 더 이상 진행이 없을 때, 처음으로 돌아가기 옵션 제공
         showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
 
         if (node.next) {
@@ -144,7 +174,7 @@ function handleNode(node, isBack = false) {
     }
 }
 
-function handleNext(nextId, videoKey = null) {
+function handleNext(nextId, videoKey = null, triggerId = null) {
     if (nextTimeout) clearTimeout(nextTimeout);
     
     if (!nextId) return;
@@ -174,8 +204,9 @@ function handleNext(nextId, videoKey = null) {
     // 3. Actions 확인
     else if (chatData.actions[nextId]) {
         targetNode = Object.assign({}, chatData.actions[nextId]); 
+        targetNode.triggerId = triggerId; // 커스텀 텍스트 매핑용 트리거 옵션 ID 전달
         if (videoKey && targetNode.id === "VIDEO") {
-            targetNode.video_key = videoKey; // 동적 비디오 키 주입
+            targetNode.video_key = videoKey; 
         }
     }
 
@@ -218,8 +249,8 @@ function showOptions(options) {
             addMessage(opt.label, "user");
             container.innerHTML = ""; // 옵션 지우기
             
-            // 다음 흐름 처리
-            handleNext(opt.next, opt.video_key);
+            // 다음 흐름 처리 (opt.id를 triggerId로 추가 전달!)
+            handleNext(opt.next, opt.video_key, opt.id);
         };
         container.appendChild(btn);
     });

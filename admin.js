@@ -25,7 +25,17 @@ function loadSessionsFromFirebase() {
             }
         }
     });
+
+    // 트리 설정도 로드
+    db.ref('settings/responses').on('value', snapshot => {
+        responseSettings = snapshot.val() || {};
+        if (currentTab === 'videos') {
+            loadVideos();
+        }
+    });
 }
+
+let responseSettings = {};
 
 function renderSessionList() {
     document.getElementById('total-sessions').textContent = `총 세션: ${allSessions.length}`;
@@ -187,20 +197,18 @@ function switchTab(tab, event) {
         renderSessionList();
     } else if (tab === 'videos') {
         document.getElementById('view-videos').style.display = 'flex';
-        document.getElementById('page-title').textContent = '영상 가이드 링크 관리';
-        renderVideoAdminList();
+        document.getElementById('page-title').textContent = '버튼 트리 맞춤 답변 관리';
+        loadVideos();
     } else if (tab === 'changelog') {
         document.getElementById('view-changelog').style.display = 'block';
         document.getElementById('page-title').textContent = '버전 업데이트 창고';
     }
 }
 
-// ----------------- 영상 매핑 로직 ----------------- 
+// ----------------- 버튼 트리 맞춤 답변 로직 ----------------- 
 function loadVideos() {
     const container = document.getElementById('video-list-container');
     container.innerHTML = '';
-    
-    let customLinks = JSON.parse(localStorage.getItem('customVideoLinks') || '{}');
     
     // 버튼 경로 추적 BFS/DFS
     let nodeMap = {
@@ -218,7 +226,8 @@ function loadVideos() {
         "L3_BRAKE_CARER_SYMPTOM": chatDataRaw.layer3_diagnosis.brake.step2_carer
     };
 
-    let paths = {};
+    let leafNodes = [];
+
     function traverse(nodeId, currentPath) {
         const node = nodeMap[nodeId];
         if (!node || !node.options) return;
@@ -226,53 +235,79 @@ function loadVideos() {
             let label = opt.label.replace(/[🛞🪑🦽🔒]/g, "").trim();
             let newPath = currentPath ? currentPath + " > " + label : label;
             
-            if (opt.video_key) {
-                if (!paths[opt.video_key]) paths[opt.video_key] = [];
-                paths[opt.video_key].push(newPath);
-            }
-            if (opt.next && nodeMap[opt.next]) {
+            // 만약 다음 노드가 액션 노드(Leaf)에 도달한다면 리스트에 추가
+            if (["VIDEO", "REQUEST_VIDEO", "ESCALATE_CHAT", "ESCALATE_CALL"].includes(opt.next)) {
+                leafNodes.push({
+                    id: opt.id,
+                    path: newPath,
+                    defaultKey: opt.video_key || null,
+                    nextAction: opt.next
+                });
+            } else if (nodeMap[opt.next]) {
                 traverse(opt.next, newPath);
             }
         });
     }
     traverse("L1", "");
 
-    // 영상 리스트 렌더링
-    chatDataRaw.video_db.videos.forEach(video => {
-        let currentUrl = customLinks[video.key] !== undefined ? customLinks[video.key] : video.url;
-        let triggers = paths[video.key] || ["단독 연결 (트리 직접 참조 없음)"];
+    // 트리 리스트 렌더링
+    leafNodes.forEach(leaf => {
+        let savedData = responseSettings[leaf.id] || {};
+        let currentUrl = savedData.url || "";
+        let currentText = savedData.text || "";
         
         let card = document.createElement('div');
         card.className = 'video-card';
-        
-        let triggersHtml = triggers.map(t => `<div class="trigger-path">📍 ${t}</div>`).join("");
+        card.style = "background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; align-items: flex-start; flex-direction: column; gap: 15px;";
+
+        let actionBadge = "";
+        if(leaf.nextAction === "VIDEO") actionBadge = `<span style="background:#818cf8; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">영상 제공 액션</span>`;
+        if(leaf.nextAction === "REQUEST_VIDEO") actionBadge = `<span style="background:#fb923c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">미디어 요청 액션</span>`;
+        if(leaf.nextAction.includes("ESCALATE")) actionBadge = `<span style="background:#f87171; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">상담원 연결 액션</span>`;
 
         card.innerHTML = `
-            <div class="video-info">
-                <h4>${video.title}</h4>
-                <div class="paths-container">${triggersHtml}</div>
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; padding-bottom:10px;">
+                <div style="font-weight:600; color:#374151;">📍 경로: ${leaf.path}</div>
+                ${actionBadge}
             </div>
-            <div class="video-action">
-                <input type="text" id="url-${video.key}" value="${currentUrl}" placeholder="https://youtube.com/...">
-                <button onclick="saveVideoUrl('${video.key}')">저장</button>
+            
+            <div style="width:100%; display:flex; flex-direction:column; gap:10px;">
+                <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">커스텀 텍스트 답변 (기본 답변 대신 출력될 내용, 없으면 기본값)</label>
+                <textarea id="text-${leaf.id}" placeholder="해당 항목 선택시 보여줄 상세한 텍스트 답변을 다채롭게 입력하세요..." style="width:100%; height:80px; padding:10px; border-radius:8px; border:1px solid #d1d5db; resize:vertical; font-family:inherit;">${currentText}</textarea>
+            </div>
+            
+            <div style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:5px;">
+                <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">추가 영상 링크 (URL, 없으면 스킵)</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="url-${leaf.id}" value="${currentUrl}" placeholder="https://youtube.com/... (또는 외부 링크)" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db;">
+                    <button onclick="saveTreeResponse('${leaf.id}')" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 20px; font-weight:600; cursor:pointer;">저장</button>
+                </div>
             </div>
         `;
         container.appendChild(card);
     });
 }
 
-window.saveVideoUrl = function(key) {
-    let customLinks = JSON.parse(localStorage.getItem('customVideoLinks') || '{}');
-    let inputUrl = document.getElementById(`url-${key}`).value.trim();
-    customLinks[key] = inputUrl;
-    localStorage.setItem('customVideoLinks', JSON.stringify(customLinks));
+window.saveTreeResponse = function(id) {
+    let inputUrl = document.getElementById(`url-${id}`).value.trim();
+    let inputText = document.getElementById(`text-${id}`).value.trim();
     
-    // 버튼 시각효과
-    const btn = event.currentTarget;
-    btn.textContent = "저장완료!";
-    btn.style.background = "#059669";
-    setTimeout(() => {
-        btn.textContent = "저장";
-        btn.style.background = "var(--primary)";
-    }, 1500);
+    // Firebase에 즉시 저장
+    db.ref('settings/responses/' + id).set({
+        url: inputUrl,
+        text: inputText
+    }).then(() => {
+        // 버튼 시각효과
+        const btn = event.currentTarget;
+        const originalText = btn.textContent;
+        btn.textContent = "저장완료!";
+        btn.style.background = "#059669";
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = "var(--primary)";
+        }, 1500);
+    }).catch(e => {
+        console.error(e);
+        alert("설정 저장 실패!");
+    });
 }
