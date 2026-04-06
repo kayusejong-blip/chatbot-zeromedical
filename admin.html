@@ -21,7 +21,8 @@
             <nav class="menu">
                 <a href="#" class="active" onclick="switchTab('sessions', event)">최근 채팅 내역</a>
                 <a href="#" onclick="switchTab('videos', event)">영상 가이드 관리</a>
-                <a href="index.html?v=3.0" style="margin-top:auto;">사용자 화면으로 가기</a>
+                <a href="#" onclick="switchTab('changelog', event)">버전 업데이트 창고</a>
+                <a href="index.html?v=3.1" style="margin-top:auto;" target="_blank">사용자 화면 미리보기</a>
             </nav>
         </aside>
 
@@ -71,6 +72,39 @@
                     <div id="video-list-container" class="video-list-container">
                         <!-- 영상 카드들이 렌더링될 위치 -->
                     </div>
+                </div>
+            </div>
+
+            <!-- Changelog View -->
+            <div class="dashboard-body" id="view-changelog" style="display: none; padding: 30px; overflow-y: auto;">
+                <div style="background: var(--log-bg, #111827); border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);">
+                    <h2 style="color: white; font-size: 1.25rem; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">📝 시스템 변경 내역(업데이트 로그)</h2>
+                    <ul class="log-list" style="list-style: none; display: flex; flex-direction: column; gap: 20px; padding: 0;">
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v3.1</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>미디어 Cloud Storage 전환:</strong> 기존 Realtime Database 용량 한계로 인해 영상 첨부가 불가능했던 문제를 해결하기 위해, 전용 무상 클라우드 스토리지 시스템을 신규 연동.<br>이제 대용량 영상도 실시간 업로드 및 진행률 표시가 가능합니다. UI 모바일 최적화 및 어드민 내 로그 창고 분리.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v3.0</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>Firebase Realtime Database 연동:</strong> 로컬스토리지를 제거하고 실제 상용 수준의 실시간 클라우드 DB 연동 완료.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v2.2</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>폴백 버튼(Fallback) 예외 처리:</strong> 모든 트리에 [찾는 항목이 없어요] 버튼 추가 연동.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v2.1</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>사용자 자유 채팅 기능 (Free Text):</strong> 버튼식 UI 외 텍스트 자유 입력 채팅바 추가. 관리자에게 실시간 연동됨.
+                            </p>
+                        </li>
+                    </ul>
                 </div>
             </div>
 

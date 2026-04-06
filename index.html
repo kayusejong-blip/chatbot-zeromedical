@@ -43,53 +43,6 @@
                 <input type="file" id="media-upload" accept="image/*,video/*" style="display:none;" onchange="handleFileUpload(event)">
             </footer>
         </div>
-        
-        <aside class="update-log-container">
-            <h2>업데이트 로그</h2>
-            <div style="margin-bottom: 20px;">
-                <a href="admin.html?v=3.0" class="admin-link">🛠 관리자 대시보드 바로가기</a>
-            </div>
-            <ul class="log-list">
-                <li>
-                    <span class="log-version">v3.0</span><span class="log-date">26.04.06</span>
-                    <p class="log-desc">
-                        - <strong>Firebase Realtime Database 연동:</strong> 로컬스토리지를 제거하고 실제 상용 수준의 실시간 클라우드 데이터베이스를 연동. 이제 기기나 브라우저가 정반대 환경이어도 실시간 채팅과 사진 전송, 관리자 대시보드 알림이 백엔드를 통해 즉각 반영됩니다!!
-                    </p>
-                </li>
-                <li>
-                    <span class="log-version">v2.2</span><span class="log-date">26.04.06</span>
-                    <p class="log-desc">
-                        - <strong>폴백 버튼(Fallback) 예외 처리:</strong> 트리 항목에서 선택지를 찾지 못해 사용자가 이탈하는 것을 막기 위해 모든 버튼 트리에 [찾는 항목이 없어요] 버튼 추가 연동.
-                    </p>
-                </li>
-                <li>
-                    <span class="log-version">v2.1</span><span class="log-date">26.04.06</span>
-                    <p class="log-desc">
-                        - <strong>사용자 자유 채팅 기능 (Free Text):</strong> 버튼식 인터페이스와 더불어 사용자가 언제든 텍스트로 자유롭게 문의를 남길 수 있는 채팅바 추가. 관리자에게 실시간 연동됨.
-                    </p>
-                </li>
-                <li>
-                    <span class="log-version">v2.0</span><span class="log-date">26.04.06</span>
-                    <p class="log-desc">
-                        - <strong>미디어 뷰어 & 다운로드 기능:</strong> 사용자가 업로드한 사진/영상을 관리자 대시보드에서 직접 조회 및 원본 다운로드할 수 있도록 기능 추가 (Base64 인코딩 매핑)
-                    </p>
-                </li>
-                <li>
-                    <span class="log-version">v1.9</span><span class="log-date">26.04.06</span>
-                    <p class="log-desc">- 🔗 관리자 모드에 [영상 가이드 관리] 패널 신설<br>- 작동 트리 기반의 영상 매핑 추적 및 실시간 URL 변경 기능 탑재</p>
-                </li>
-                <li>
-                    <span class="log-version">v1.7</span>
-                    <span class="log-date">2026-04-06</span>
-                    <p class="log-desc">- 🚨 사진/영상 첨부 요청 시, 중요성 강조 및 설득력을 높인 정중한 시각적 알림 메시지로 개편</p>
-                </li>
-                <li>
-                    <span class="log-version">v1.6</span>
-                    <span class="log-date">2026-04-06</span>
-                    <p class="log-desc">- 📷 증상 사진/영상 첨부 기능 및 미리보기 구현<br>- LocalStorage 용량 안전장치(Blob 우회) 적용</p>
-                </li>
-            </ul>
-        </aside>
     </div>
     <!-- Firebase SDK (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

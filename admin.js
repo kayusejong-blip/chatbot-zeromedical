@@ -170,23 +170,28 @@ window.sendAdminReply = function() {
 // 탭 스위칭 로직
 let currentTab = 'sessions';
 function switchTab(tab, event) {
-    if (event) {
-        document.querySelectorAll('.menu a').forEach(el => el.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-    }
-    
+    if (event) event.preventDefault();
     currentTab = tab;
+    // 모든 탭 컨텐츠 숨기기
+    document.getElementById('view-sessions').style.display = 'none';
+    document.getElementById('view-videos').style.display = 'none';
+    document.getElementById('view-changelog').style.display = 'none';
+    
+    // 메뉴 액티브 상태 초기화
+    document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
+    if (event) event.currentTarget.classList.add('active');
     
     if (tab === 'sessions') {
         document.getElementById('view-sessions').style.display = 'flex';
-        document.getElementById('view-videos').style.display = 'none';
         document.getElementById('page-title').textContent = '실시간 관리자 대시보드';
         renderSessionList();
     } else if (tab === 'videos') {
-        document.getElementById('view-sessions').style.display = 'none';
         document.getElementById('view-videos').style.display = 'flex';
         document.getElementById('page-title').textContent = '영상 가이드 링크 관리';
-        loadVideos();
+        renderVideoAdminList();
+    } else if (tab === 'changelog') {
+        document.getElementById('view-changelog').style.display = 'block';
+        document.getElementById('page-title').textContent = '버전 업데이트 창고';
     }
 }
 
