@@ -82,17 +82,23 @@ function handleNode(node, isBack = false) {
     
     currentNode = node;
 
-    if (node.message) {
+    let displayMessage = node.message;
+    // 커스텀 텍스트 덮어쓰기 로직
+    if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
+        displayMessage = treeResponses[node.triggerId].text;
+    }
+
+    if (displayMessage && node.type !== "video_solution" && node.type !== "send_video_link") {
         // request_customer_video 타입일 때 가이드 내용 추가
         if (node.type === "request_customer_video" && node.guide) {
-            let msg = node.message + "<br><br><strong>[📹 촬영 가이드]</strong><ul class='guide-list'>";
+            let msg = displayMessage.replace(/\n/g, '<br>') + "<br><br><strong>[📹 촬영 가이드]</strong><ul class='guide-list'>";
             node.guide.instructions.forEach(inst => {
                 msg += `<li>${inst}</li>`;
             });
             msg += "</ul>";
             addMessage(msg, "bot");
         } else {
-            addMessage(node.message.replace(/\n/g, '<br>'), "bot");
+            addMessage(displayMessage.replace(/\n/g, '<br>'), "bot");
         }
     }
     
@@ -155,12 +161,6 @@ function handleNode(node, isBack = false) {
         }, 800);
     } 
     else if (node.type === "media_request" || node.type === "request_customer_video") {
-        let contentHtml = node.message;
-        // 커스텀 텍스트 덮어쓰기
-        if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
-            contentHtml = treeResponses[node.triggerId].text.replace(/\n/g, '<br>');
-        }
-        addMessage(contentHtml, "bot");
 
         let opts = node.options || [
             { label: "📷 사진/영상 첨부하기", action: "UPLOAD" }
@@ -168,11 +168,6 @@ function handleNode(node, isBack = false) {
         showOptions(opts);
     }
     else if (node.type === "escalate" || node.type === "escalate_call" || node.type === "end") {
-        let contentHtml = node.message;
-        if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
-            contentHtml = treeResponses[node.triggerId].text.replace(/\n/g, '<br>');
-        }
-        addMessage(contentHtml, "bot");
 
         saveSessionToStorage(node.type === "end" ? "해결 완료" : "상담원 연결 요망");
 
