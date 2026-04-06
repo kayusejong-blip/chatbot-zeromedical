@@ -318,42 +318,68 @@ function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // 더 이상 다른 옵션을 누를 수 없도록 컨테이너 클리어
     document.getElementById("options-container").innerHTML = "";
-
-    const isImage = file.type.startsWith('image/');
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const base64Data = e.target.result;
-        
-        let htmlContent = `<div style="display:flex; flex-direction:column; align-items:flex-end;">
-            <span style="font-size: 0.8rem; margin-bottom: 8px; opacity: 0.9;">첨부 완료: ${file.name}</span>`;
-        
-        if (isImage) {
-            htmlContent += `<img src="${base64Data}" style="max-width:100%; border-radius:12px; border:2px solid rgba(255,255,255,0.2);">`;
-        } else {
-            htmlContent += `<video src="${base64Data}" controls style="max-width:100%; border-radius:12px; border:2px solid rgba(255,255,255,0.2);"></video>`;
-        }
-        htmlContent += `</div>`;
-        
-        let textForStorage = `📎 미디어 첨부 완료: ${file.name}`;
-        
-        addMessage(htmlContent, "user", textForStorage, {
-            name: file.name,
-            type: file.type,
-            data: base64Data
-        });
-        
-        setTimeout(() => {
-            addMessage("업로드가 완료되었습니다. 담당 엔지니어가 사진/영상을 확인한 후 신속하게 연락드리겠습니다. 🛠", "bot");
-            saveSessionToStorage("첨부파일 접수 완료 / 상담 대기");
-            showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
-        }, 1500);
-    };
+    // UI에 "업로드 중..." 표시
+    const container = document.getElementById("chat-messages");
+    const placeholderId = "upload-" + Date.now();
+    const msgDiv = document.createElement("div");
+    msgDiv.id = placeholderId;
+    msgDiv.className = `message user-message`;
+    msgDiv.innerHTML = `⏳ <strong>${file.name}</strong><br>파일을 클라우드 서버에 업로드 중입니다. 창을 닫지 말아주세요...`; 
+    container.appendChild(msgDiv);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
 
-    reader.readAsDataURL(file);
-    // 같은 파일을 다시 올릴 수도 있으니 input value 초기화
+    // Firebase Storage 업로드
+    const storageRef = storage.ref('uploads/' + currentSessionId + '/' + Date.now() + '_' + file.name);
+    const uploadTask = storageRef.put(file);
+
+    uploadTask.on('state_changed', 
+        (snapshot) => {
+             // 진행률 표시
+             let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+             document.getElementById(placeholderId).innerHTML = `⏳ <strong>${file.name}</strong><br>클라우드 서버에 업로드 중... (${Math.round(progress)}%)`;
+        }, 
+        (error) => {
+             console.error("Storage upload error", error);
+             document.getElementById(placeholderId).innerHTML = `❌ <strong>${file.name}</strong><br>업로드에 실패했습니다. (${error.message})`;
+             setTimeout(() => { showOptions([{ label: "🔄 다시 시도 (처음으로)", next: "RESTART" }]); }, 2000);
+        }, 
+        () => {
+             // 업로드 성공 후 다운로드 URL 가져오기
+             uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                 // 기존 placeholder 삭제
+                 msgDiv.remove();
+                 
+                 const isImage = file.type.startsWith('image/');
+                 let htmlContent = `<div style="display:flex; flex-direction:column; align-items:flex-end;">
+                     <span style="font-size: 0.8rem; margin-bottom: 8px; opacity: 0.9;">첨부 완료: ${file.name}</span>`;
+                 
+                 if (isImage) {
+                     htmlContent += `<img src="${downloadURL}" style="max-width:100%; border-radius:12px; border:2px solid rgba(255,255,255,0.2);">`;
+                 } else {
+                     htmlContent += `<video src="${downloadURL}" controls style="max-width:100%; border-radius:12px; border:2px solid rgba(255,255,255,0.2);"></video>`;
+                 }
+                 htmlContent += `</div>`;
+                 
+                 let textForStorage = `📎 미디어 첨부 완료: ${file.name}`;
+                 
+                 // RTDB에 다운로드 URL 저장 (Base64 대체)
+                 addMessage(htmlContent, "user", textForStorage, {
+                     name: file.name,
+                     type: file.type,
+                     data: downloadURL
+                 });
+                 
+                 setTimeout(() => {
+                     addMessage("업로드가 완료되었습니다. 담당 엔지니어가 사진/영상을 확인한 후 신속하게 연락드리겠습니다. 🛠", "bot");
+                     saveSessionToStorage("첨부파일 접수 완료 / 상담 대기");
+                     showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
+                 }, 1500);
+             });
+        }
+    );
+
     event.target.value = '';
 }
 
