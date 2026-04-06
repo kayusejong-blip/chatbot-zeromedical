@@ -278,11 +278,10 @@ function loadVideos() {
             
             <div style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:5px;">
                 <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">추가 영상 링크 (URL, 없으면 스킵)</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="url-${leaf.id}" value="${currentUrl}" placeholder="https://youtube.com/... (또는 외부 링크)" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db;">
-                    <button onclick="saveTreeResponse('${leaf.id}')" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 20px; font-weight:600; cursor:pointer;">저장</button>
-                </div>
+                <input type="text" id="url-${leaf.id}" value="${currentUrl}" placeholder="https://youtube.com/... (또는 외부 링크)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #d1d5db;">
             </div>
+            
+            <button onclick="saveTreeResponse('${leaf.id}')" style="margin-top:10px; width:100%; background:var(--primary); color:white; border:none; border-radius:8px; padding:14px; font-weight:600; cursor:pointer; transition: 0.2s;">💾 위 텍스트 답변 & 링크 모두 저장하기</button>
         `;
         container.appendChild(card);
     });
