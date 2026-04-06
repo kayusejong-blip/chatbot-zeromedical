@@ -282,23 +282,42 @@ function showOptions(options) {
         container.appendChild(fallbackBtn);
     }
 
-    // 뒤로 가기 / 이전으로 가기 버튼 추가 로직
+    // 뒤로 가기 / 처음으로 가기 버튼 그룹 추가
     if (nodeHistory.length > 0) {
+        // 처음으로 가기 버튼
+        const homeBtn = document.createElement("button");
+        homeBtn.className = "option-btn home-btn";
+        homeBtn.innerHTML = `<span>🏠 처음 화면으로 돌아가기</span>`;
+        homeBtn.style.backgroundColor = "#F9FAFB";
+        homeBtn.style.color = "#4B5563";
+        homeBtn.style.border = "1px solid #D1D5DB";
+        
+        homeBtn.onclick = () => {
+            if (nextTimeout) clearTimeout(nextTimeout);
+            addMessage("처음으로 돌아가기", "user");
+            container.innerHTML = "";
+            setTimeout(() => {
+                startFlow();
+            }, 300);
+        };
+        container.appendChild(homeBtn);
+
+        // 이전으로 가기 버튼
         const backBtn = document.createElement("button");
         backBtn.className = "option-btn back-btn";
-        backBtn.innerHTML = `<span>⬅️ 이전으로 가기</span>`;
+        backBtn.innerHTML = `<span>⬅️ 이전 단계로 가기</span>`;
+        backBtn.style.backgroundColor = "#F9FAFB";
+        backBtn.style.color = "#4B5563";
+        backBtn.style.border = "1px solid #D1D5DB";
         
         backBtn.onclick = () => {
             if (nextTimeout) clearTimeout(nextTimeout);
-            addMessage("이전으로 가기", "user");
-            container.innerHTML = ""; // 옵션 지우기
-            
+            addMessage("이전 단계로", "user");
+            container.innerHTML = "";
             let prevNode = nodeHistory.pop();
-            
-            // 이전 노드 렌더링 (살짝 딜레이 주어 부드럽게)
             setTimeout(() => {
                 handleNode(prevNode, true);
-            }, 500);
+            }, 300);
         };
         container.appendChild(backBtn);
     }
