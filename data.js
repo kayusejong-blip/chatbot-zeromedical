@@ -132,7 +132,7 @@ const chatDataRaw = {
     "ESCALATE_CHAT": {
       "id": "ESCALATE_CHAT",
       "type": "escalate",
-      "message": "전문 상담원과 즉시 연결해 드리겠습니다.\n잠시만 기다려주시면 1:1 담당자가 배정됩니다."
+      "message": "전문 상담원과 즉시 연결해 드리겠습니다.\n담당자가 배정되는 동안, **해결이 필요한 문제나 증상을 하단 채팅창에 미리 남겨주시면** 확인 후 신속하게 도움을 드릴 수 있습니다."
     },
 
     "ESCALATE_CALL": {
