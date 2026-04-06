@@ -7,6 +7,10 @@ let nextTimeout = null; // 자동 이동 타이머 추적
 let currentSessionStatus = ""; // 서버(Firebase)와 동기화되는 상태
 let treeResponses = {}; // Firebase에서 동기화되는 커스텀 트리 응답 데이터
 
+// ===== Gemini AI 연동 설정 =====
+const GEMINI_FUNCTION_URL = "https://us-central1-zero-medical-cs-260406.cloudfunctions.net/askGemini";
+let isAiProcessing = false; // AI 응답 대기 중 중복 요청 방지
+
 function initChat() {
     try {
         // data.js 스크립트로 불러온 전역 변수를 바로 참조
@@ -242,7 +246,14 @@ function showOptions(options) {
             // 파일 업로드 액션인 경우
             if (opt.action === "UPLOAD") {
                 document.getElementById('media-upload').click();
-                return; // 즉각 반환. 실질적 작업은 handleFileUpload()에서.
+                return;
+            }
+            
+            // 추가 질문하기 액션 (입력창 포커스)
+            if (opt.action === "FOCUS_INPUT") {
+                container.innerHTML = "";
+                document.getElementById("user-free-text").focus();
+                return;
             }
 
             // 현재 노드를 히스토리에 푸시 (뒤로가기 용)
@@ -447,24 +458,94 @@ function saveSessionToStorage(status) {
     });
 }
 
-// 사용자 자유 채팅(텍스트) 전송
-window.sendUserText = function() {
+// 사용자 자유 채팅(텍스트) 전송 → Gemini AI 연동
+window.sendUserText = async function() {
     const input = document.getElementById("user-free-text");
     const text = input.value.trim();
     if (!text) return;
+    if (isAiProcessing) return; // 중복 요청 방지
+    
+    input.value = '';
     
     // UI 및 스토리지 업데이트
     addMessage(text, "user");
     
-    // 관리자 개입 중이 아닐 경우 상태 변경 가이드 표기
-    if (currentSessionStatus !== '관리자 직접 개입') {
-        saveSessionToStorage("사용자 추가 문의 (답변 대기)");
-        setTimeout(() => {
-            addMessage("상담원에게 메시지가 전달되었습니다. 확인 후 순차적으로 답변 드리겠습니다. 🧑‍⚕️", "bot");
-        }, 1000);
+    // 관리자 직접 개입 중이면 AI 우회 (기존 로직 유지)
+    if (currentSessionStatus === '관리자 직접 개입') {
+        return;
     }
     
-    input.value = '';
+    // AI 응답 모드 진입
+    isAiProcessing = true;
+    saveSessionToStorage("AI 상담 진행 중...");
+    
+    // 타이핑 인디케이터 표시
+    const container = document.getElementById("chat-messages");
+    const typingDiv = document.createElement("div");
+    typingDiv.id = "ai-typing-indicator";
+    typingDiv.className = "message bot-message typing-indicator";
+    typingDiv.innerHTML = `<span class="dot"></span><span class="dot"></span><span class="dot"></span> AI가 답변을 준비하고 있습니다...`;
+    container.appendChild(typingDiv);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    
+    try {
+        const response = await fetch(GEMINI_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: text })
+        });
+        
+        // 타이핑 인디케이터 삭제
+        const indicator = document.getElementById("ai-typing-indicator");
+        if (indicator) indicator.remove();
+        
+        if (!response.ok) {
+            throw new Error(`서버 응답 오류: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.reply) {
+            // 마크다운 기본 변환 (볼드, 줄바꿈)
+            let formatted = data.reply
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+            
+            addMessage(formatted, "bot", data.reply);
+            saveSessionToStorage("AI 답변 완료 (추가 문의 가능)");
+            
+            // 후속 액션 버튼 표시
+            setTimeout(() => {
+                showOptions([
+                    { label: "💬 추가 질문하기", action: "FOCUS_INPUT" },
+                    { label: "📷 사진/영상 첨부하기", action: "UPLOAD" },
+                    { label: "🧑‍💼 상담원 연결 요청", next: "ESCALATE_CHAT" },
+                    { label: "🏠 처음으로 돌아가기", next: "RESTART" }
+                ]);
+            }, 500);
+        } else {
+            throw new Error("응답 데이터 없음");
+        }
+    } catch (error) {
+        console.error("AI 응답 오류:", error);
+        
+        // 타이핑 인디케이터 삭제 (에러 시에도)
+        const indicator = document.getElementById("ai-typing-indicator");
+        if (indicator) indicator.remove();
+        
+        addMessage("죄송합니다. AI 응답을 가져오는 중 문제가 발생했습니다.<br>아래 버튼을 눌러 상담원에게 직접 문의해 주세요. 🙏", "bot");
+        saveSessionToStorage("AI 오류 / 상담원 연결 필요");
+        
+        setTimeout(() => {
+            showOptions([
+                { label: "🧑‍💼 상담원에게 직접 연결", next: "ESCALATE_CHAT" },
+                { label: "🔄 처음으로 돌아가기", next: "RESTART" }
+            ]);
+        }, 500);
+    } finally {
+        isAiProcessing = false;
+    }
 };
 
 // 초기화
