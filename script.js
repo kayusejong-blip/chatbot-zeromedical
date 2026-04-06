@@ -477,14 +477,14 @@ window.sendUserText = async function() {
     
     // AI 응답 모드 진입
     isAiProcessing = true;
-    saveSessionToStorage("AI 상담 진행 중...");
+    saveSessionToStorage("상담 진행 중...");
     
     // 타이핑 인디케이터 표시
     const container = document.getElementById("chat-messages");
     const typingDiv = document.createElement("div");
     typingDiv.id = "ai-typing-indicator";
     typingDiv.className = "message bot-message typing-indicator";
-    typingDiv.innerHTML = `<span class="dot"></span><span class="dot"></span><span class="dot"></span> AI가 답변을 준비하고 있습니다...`;
+    typingDiv.innerHTML = `<span class="dot"></span><span class="dot"></span><span class="dot"></span> 답변을 준비하고 있습니다...`;
     container.appendChild(typingDiv);
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     
@@ -513,7 +513,7 @@ window.sendUserText = async function() {
                 .replace(/\n/g, '<br>');
             
             addMessage(formatted, "bot", data.reply);
-            saveSessionToStorage("AI 답변 완료 (추가 문의 가능)");
+            saveSessionToStorage("답변 완료 (추가 문의 가능)");
             
             // 후속 액션 버튼 표시
             setTimeout(() => {
