@@ -98,7 +98,7 @@ const chatDataRaw = {
         },
         {
           "id": "V_UNSOLVED",
-          "label": "💬 아니오, 추가로 상담원 지도가 필요합니다",
+          "label": "💬 아니오, 상담원 연결이 필요합니다",
           "next": "ESCALATE_CHAT"
         }
       ]
