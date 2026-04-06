@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>관리자 대시보드 - CS 센터</title>
+    <link rel="stylesheet" href="admin.css?v=3.0">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>🛠 CS Admin</h2>
+                <span class="version">v3.0</span>
+            </div>
+            <nav class="menu">
+                <a href="#" class="active" onclick="switchTab('sessions', event)">최근 채팅 내역</a>
+                <a href="#" onclick="switchTab('videos', event)">영상 가이드 관리</a>
+                <a href="index.html?v=3.0" style="margin-top:auto;">사용자 화면으로 가기</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="page-title">실시간 관리자 대시보드</h1>
+                <div class="stats">
+                    <span id="total-sessions">총 세션: 0</span>
+                </div>
+            </header>
+
+            <div class="dashboard-body" id="view-sessions">
+                <!-- Session List -->
+                <div class="session-list-container">
+                    <h3>채팅 세션 목록</h3>
+                    <ul class="session-list" id="session-list">
+                        <!-- Sessions 정렬될 위치 -->
+                    </ul>
+                </div>
+
+                <!-- Chat Detail View -->
+                <div class="chat-detail-container">
+                    <header class="detail-header" id="detail-header">
+                        <h3>대화 상세 (세션을 선택하세요)</h3>
+                        <span class="status-badge" style="display:none;" id="detail-status"></span>
+                    </header>
+                    <div class="detail-messages" id="detail-messages">
+                        <div class="empty-state">
+                            <p>좌측 목록에서 세션을 선택하여<br>대화 내용을 확인하세요.</p>
+                        </div>
+                    </div>
+                    <div class="admin-reply-container" id="admin-reply-container" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
+                        <form style="display: flex; gap: 10px;" onsubmit="event.preventDefault(); sendAdminReply();">
+                            <input type="text" id="admin-reply-input" placeholder="실시간 관리자 개입 메시지 입력 (Enter 전송)" style="flex: 1; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; outline: none; transition: border-color 0.2s;">
+                            <button type="submit" style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">전송</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Management View -->
+            <div class="dashboard-body" id="view-videos" style="display: none; flex-direction: column; overflow-y: auto;">
+                <div class="video-admin-panel" style="background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+                    <h3 style="margin-bottom: 20px; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">🔗 영상 가이드 링크 매핑 관리</h3>
+                    <p style="margin-bottom: 20px; color: var(--text-muted);">봇 내부의 각 질문 경로(버튼 트리)에 연결된 영상의 URL을 직관적으로 확인하고 즉시 수정할 수 있습니다.<br>저장 시 고객 센터 화면에 실시간 적용됩니다.</p>
+                    <div id="video-list-container" class="video-list-container">
+                        <!-- 영상 카드들이 렌더링될 위치 -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <!-- Firebase SDK (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="firebase-config.js?v=3.0"></script>
+
+    <script src="data.js?v=3.0"></script>
+    <script src="admin.js?v=3.0"></script>
+</body>
+</html>

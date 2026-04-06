@@ -1,0 +1,390 @@
+let chatData = null;
+let currentSessionId = 'CS-' + Date.now(); // 현재 세션 ID 생성
+let chatHistory = []; // 현재 채팅 내역 저장 배열
+let nodeHistory = []; // 뒤로 가기 추적 배열
+let currentNode = null; // 현재 노드 추적 변수
+let nextTimeout = null; // 자동 이동 타이머 추적
+let currentSessionStatus = ""; // 서버(Firebase)와 동기화되는 상태
+
+function initChat() {
+    try {
+        // data.js 스크립트로 불러온 전역 변수를 바로 참조
+        chatData = chatDataRaw;
+        
+        // 초기 세션 상태 설정 (Firebase)
+        saveSessionToStorage("진행 중...");
+        
+        // Firebase 실시간 관리자 동기화 시작
+        initFirebaseSync();
+        
+        startFlow();
+    } catch (e) {
+        console.error("데이터 로드 실패", e);
+        addMessage("챗봇 데이터를 불러올 수 없습니다. 경로를 확인해주세요.", "bot");
+    }
+}
+
+function initFirebaseSync() {
+    // 메시지 수신 (관리자가 보낸 메시지만 렌더링)
+    db.ref('sessions/' + currentSessionId + '/messages').on('child_added', snapshot => {
+        let msg = snapshot.val();
+        if (!chatHistory.some(m => m.id === msg.id)) {
+            chatHistory.push(msg); // 로컬 기록 동기화
+            
+            if (msg.sender === 'admin') {
+                const container = document.getElementById("chat-messages");
+                const msgDiv = document.createElement("div");
+                msgDiv.className = `message admin-message`;
+                msgDiv.innerHTML = `<strong>👨‍💻 관리자</strong><br>` + msg.text; 
+                container.appendChild(msgDiv);
+                
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }
+    });
+
+    // 상태 동기화 (관리자 개입 여부 파악)
+    db.ref('sessions/' + currentSessionId).on('value', snapshot => {
+         let data = snapshot.val();
+         if(data && data.status) {
+             currentSessionStatus = data.status;
+         }
+    });
+}
+
+function startFlow() {
+    nodeHistory = [];
+    currentNode = null;
+    // 처음 진입점 (Layer 1)
+    const startNode = chatData.layer1_classification;
+    handleNode(startNode);
+}
+
+function handleNode(node, isBack = false) {
+    if (!node) return;
+    
+    currentNode = node;
+
+    if (node.message) {
+        // request_customer_video 타입일 때 가이드 내용 추가
+        if (node.type === "request_customer_video" && node.guide) {
+            let msg = node.message + "<br><br><strong>[📹 촬영 가이드]</strong><ul class='guide-list'>";
+            node.guide.instructions.forEach(inst => {
+                msg += `<li>${inst}</li>`;
+            });
+            msg += "</ul>";
+            addMessage(msg, "bot");
+        } else {
+            addMessage(node.message.replace(/\n/g, '<br>'), "bot");
+        }
+    }
+    
+    if (node.type === "button_select" && node.options) {
+        showOptions(node.options);
+    } 
+    // 액션 노드 처리
+    else if (node.type === "send_video_link") {
+        let videoTitle = "추천 영상";
+        let targetUrl = "";
+        
+        if (node.video_key) {
+            const videoInfo = chatData.video_db.videos.find(v => v.key === node.video_key);
+            if (videoInfo) {
+                videoTitle = videoInfo.title;
+                targetUrl = videoInfo.url || "";
+            }
+            
+            // Firebase 관리자 오버라이드 확인 (async지만 챗봇 구조상 임시동기화된 변수 사용 권장)
+            // 편의상 이 부분은 프로토타입 유지 (로컬로 일단 두거나 생략 가능)
+            let customLinks = JSON.parse(localStorage.getItem('customVideoLinks') || '{}');
+            if (customLinks[node.video_key] && customLinks[node.video_key].trim() !== "") {
+                targetUrl = customLinks[node.video_key];
+            }
+        }
+
+        let videoHtml;
+        if (targetUrl && targetUrl.trim() !== "") {
+            videoHtml = `아래 영상을 참고해서 점검해 보세요 😊<br><br><strong>[${videoTitle}]</strong><br><a href="${targetUrl}" target="_blank" class="video-link" style="background:#ef4444; border-color:#dc2626;">📺 유튜브/가이드 영상 시청하기 (새창)</a><br><br>영상대로 해결되셨나요?`;
+        } else {
+            videoHtml = `아래 영상을 참고해서 점검해 보세요 😊<br><br><strong>[${videoTitle}]</strong><br><a href="#" class="video-link" style="background:#6B7280; border-color:#4B5563;" onclick="event.preventDefault(); alert('영상이 아직 준비되지 않았습니다.\\n(관리자 모드에서 링크를 매핑해 주세요)');">🚫 스마트 가이드 준비중</a><br><br>영상대로 해결되셨나요?`;
+        }
+        
+        nextTimeout = setTimeout(() => {
+            addMessage(videoHtml, "bot");
+            if (node.follow_up && node.follow_up.options) {
+                showOptions(node.follow_up.options);
+            }
+
+        }, 800);
+    } 
+    else if (node.type === "request_customer_video") {
+        // 파일 첨부 전용 옵션 및 뒤로 가기 제공
+        showOptions([
+            { label: "📷 사진/영상 첨부하기", action: "UPLOAD" },
+            { label: "🔄 처음으로 돌아가기", next: "RESTART" }
+        ]);
+        // 타이머 자동 이동 로직 삭제 (사용자가 업로드할 시간을 주어야 함)
+    }
+    else if (node.type === "escalate" || node.type === "end") {
+        // 종료 상태 저장
+        saveSessionToStorage(node.type === "end" ? "해결 완료" : "상담원 연결 요망");
+
+        // 더 이상 진행이 없을 때, 처음으로 돌아가기 옵션 제공
+        showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
+
+        if (node.next) {
+            nextTimeout = setTimeout(() => handleNext(node.next), 1500);
+        }
+    } 
+    else if (node.next) {
+        handleNext(node.next);
+    }
+}
+
+function handleNext(nextId, videoKey = null) {
+    if (nextTimeout) clearTimeout(nextTimeout);
+    
+    if (!nextId) return;
+
+    if (nextId === "RESTART") {
+        startFlow();
+        return;
+    }
+
+    let targetNode = null;
+
+    // 1. Layer 2 확인
+    if (nextId === "L2_PRE") targetNode = chatData.layer2.pre_purchase;
+    else if (nextId === "L2_USE") targetNode = chatData.layer2.in_use;
+    else if (nextId === "L2_AS") targetNode = chatData.layer2.after_service;
+    
+    // 2. Layer 3 (진단) 확인
+    else if (nextId === "L3_BRAKE") targetNode = chatData.layer3_diagnosis.brake.step1;
+    else if (nextId === "L3_WHEEL") targetNode = chatData.layer3_diagnosis.wheel;
+    else if (nextId === "L3_SEAT") targetNode = chatData.layer3_diagnosis.seat;
+    else if (nextId === "L3_FRAME") targetNode = chatData.layer3_diagnosis.frame;
+    else if (nextId === "L3_FOOTREST") targetNode = chatData.layer3_diagnosis.footrest;
+    
+    else if (nextId === "L3_BRAKE_USER_SYMPTOM") targetNode = chatData.layer3_diagnosis.brake.step2_user;
+    else if (nextId === "L3_BRAKE_CARER_SYMPTOM") targetNode = chatData.layer3_diagnosis.brake.step2_carer;
+    
+    // 3. Actions 확인
+    else if (chatData.actions[nextId]) {
+        targetNode = Object.assign({}, chatData.actions[nextId]); 
+        if (videoKey && targetNode.id === "VIDEO") {
+            targetNode.video_key = videoKey; // 동적 비디오 키 주입
+        }
+    }
+
+    if (targetNode) {
+        setTimeout(() => handleNode(targetNode), 600); // 사용자 입력 후 살짝 딜레이
+    } else {
+        console.error("다음 노드를 찾을 수 없습니다:", nextId);
+    }
+}
+
+function showOptions(options) {
+    const container = document.getElementById("options-container");
+    container.innerHTML = "";
+    
+    options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        
+        let html = `<span>${opt.label}</span>`;
+        if (opt.description) {
+            html += `<span class="btn-desc">${opt.description}</span>`;
+        }
+        btn.innerHTML = html;
+        
+        btn.onclick = () => {
+            if (nextTimeout) clearTimeout(nextTimeout);
+            
+            // 파일 업로드 액션인 경우
+            if (opt.action === "UPLOAD") {
+                document.getElementById('media-upload').click();
+                return; // 즉각 반환. 실질적 작업은 handleFileUpload()에서.
+            }
+
+            // 현재 노드를 히스토리에 푸시 (뒤로가기 용)
+            if (opt.next !== "RESTART") {
+                nodeHistory.push(currentNode);
+            }
+            
+            // 사용자 응답 메시지 표시
+            addMessage(opt.label, "user");
+            container.innerHTML = ""; // 옵션 지우기
+            
+            // 다음 흐름 처리
+            handleNext(opt.next, opt.video_key);
+        };
+        container.appendChild(btn);
+    });
+
+    // 항목에 없는 내용을 위한 폴백 안전 장치 버튼 (업로드나 재시작 액션이 없는 경우 항상 노출)
+    const hasRestartOrUpload = options.some(opt => opt.next === "RESTART" || opt.action === "UPLOAD");
+    if (options.length > 0 && !hasRestartOrUpload) {
+        const fallbackBtn = document.createElement("button");
+        fallbackBtn.className = "option-btn fallback-btn";
+        fallbackBtn.innerHTML = `<span>🤷 찾는 항목이 없어요 (기타 문의)</span><span class="btn-desc">원하는 선택지가 없다면 여기를 눌러 직접 문의하세요.</span>`;
+        // 폴백 전용 미세한 스타일 적용 (인라인 혹은 CSS 클래스로 확장 가능)
+        fallbackBtn.style.border = "1px solid #10B981";
+        fallbackBtn.style.backgroundColor = "#F0FDF4";
+        fallbackBtn.style.color = "#047857";
+        
+        fallbackBtn.onclick = () => {
+            if (nextTimeout) clearTimeout(nextTimeout);
+            
+            nodeHistory.push(currentNode);
+            
+            addMessage("찾는 항목이 없어요 (기타 문의)", "user");
+            container.innerHTML = "";
+            
+            let fallbackMsg = "✅ **찾으시는 항목이 없으신가요?**<br><br>화면 하단의 최하단 <strong>채팅 입력창</strong>에 겪고 계신 문제나 문의사항을 텍스트로 자세히 적어주시거나, 아래 버튼을 눌러 파손된 부위 등의 <strong>사진/영상</strong>을 첨부해주세요.<br><br>담당 엔지니어가 신속하게 확인 후 안내해 드리겠습니다. 🧑‍⚕️";
+            
+            setTimeout(() => {
+                addMessage(fallbackMsg, "bot");
+                saveSessionToStorage("기타 문의 접수 됨 (상담 연결 요망)");
+                showOptions([
+                    { label: "📷 문의 관련 사진/영상 첨부하기", action: "UPLOAD" },
+                    { label: "🔄 처음으로 돌아가기", next: "RESTART" }
+                ]);
+            }, 800);
+        };
+        container.appendChild(fallbackBtn);
+    }
+
+    // 뒤로 가기 / 이전으로 가기 버튼 추가 로직
+    if (nodeHistory.length > 0) {
+        const backBtn = document.createElement("button");
+        backBtn.className = "option-btn back-btn";
+        backBtn.innerHTML = `<span>⬅️ 이전으로 가기</span>`;
+        
+        backBtn.onclick = () => {
+            if (nextTimeout) clearTimeout(nextTimeout);
+            addMessage("이전으로 가기", "user");
+            container.innerHTML = ""; // 옵션 지우기
+            
+            let prevNode = nodeHistory.pop();
+            
+            // 이전 노드 렌더링 (살짝 딜레이 주어 부드럽게)
+            setTimeout(() => {
+                handleNode(prevNode, true);
+            }, 500);
+        };
+        container.appendChild(backBtn);
+    }
+}
+
+function addMessage(text, sender, textForStorage = null, attachment = null) {
+    const container = document.getElementById("chat-messages");
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `message ${sender}-message`;
+    msgDiv.innerHTML = text; 
+    container.appendChild(msgDiv);
+    
+    // 부드러운 스크롤 이동
+    container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+    });
+
+    // Firebase 실시간 업데이트
+    let newRef = db.ref('sessions/' + currentSessionId + '/messages').push();
+    
+    let newMsg = {
+        id: newRef.key,
+        sender: sender,
+        text: textForStorage || text,
+        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+    };
+    if (attachment) {
+        newMsg.attachment = attachment;
+    }
+
+    chatHistory.push(newMsg); // 로컬에 미리 적재
+    
+    newRef.set(newMsg).catch(e => {
+        console.error("Firebase Storage Error", e);
+        alert("데이터 전송 중 오류가 발생했습니다. 파일 크기가 너무 클 수 있습니다.");
+    });
+}
+
+// 파일 업로드 핸들러
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 더 이상 다른 옵션을 누를 수 없도록 컨테이너 클리어
+    document.getElementById("options-container").innerHTML = "";
+
+    const isImage = file.type.startsWith('image/');
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64Data = e.target.result;
+        
+        let htmlContent = `<div style="display:flex; flex-direction:column; align-items:flex-end;">
+            <span style="font-size: 0.8rem; margin-bottom: 8px; opacity: 0.9;">첨부 완료: ${file.name}</span>`;
+        
+        if (isImage) {
+            htmlContent += `<img src="${base64Data}" style="max-width:100%; border-radius:12px; border:2px solid rgba(255,255,255,0.2);">`;
+        } else {
+            htmlContent += `<video src="${base64Data}" controls style="max-width:100%; border-radius:12px; border:2px solid rgba(255,255,255,0.2);"></video>`;
+        }
+        htmlContent += `</div>`;
+        
+        let textForStorage = `📎 미디어 첨부 완료: ${file.name}`;
+        
+        addMessage(htmlContent, "user", textForStorage, {
+            name: file.name,
+            type: file.type,
+            data: base64Data
+        });
+        
+        setTimeout(() => {
+            addMessage("업로드가 완료되었습니다. 담당 엔지니어가 사진/영상을 확인한 후 신속하게 연락드리겠습니다. 🛠", "bot");
+            saveSessionToStorage("첨부파일 접수 완료 / 상담 대기");
+            showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
+        }, 1500);
+    };
+
+    reader.readAsDataURL(file);
+    // 같은 파일을 다시 올릴 수도 있으니 input value 초기화
+    event.target.value = '';
+}
+
+function saveSessionToStorage(status) {
+    db.ref('sessions/' + currentSessionId).update({
+        sessionId: currentSessionId,
+        date: new Date().toLocaleDateString('ko-KR'),
+        status: status,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+}
+
+// 사용자 자유 채팅(텍스트) 전송
+window.sendUserText = function() {
+    const input = document.getElementById("user-free-text");
+    const text = input.value.trim();
+    if (!text) return;
+    
+    // UI 및 스토리지 업데이트
+    addMessage(text, "user");
+    
+    // 관리자 개입 중이 아닐 경우 상태 변경 가이드 표기
+    if (currentSessionStatus !== '관리자 직접 개입') {
+        saveSessionToStorage("사용자 추가 문의 (답변 대기)");
+        setTimeout(() => {
+            addMessage("상담원에게 메시지가 전달되었습니다. 확인 후 순차적으로 답변 드리겠습니다. 🧑‍⚕️", "bot");
+        }, 1000);
+    }
+    
+    input.value = '';
+};
+
+// 초기화
+window.onload = initChat;
