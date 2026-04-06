@@ -20,7 +20,7 @@ exports.askGemini = onRequest({ secrets: [geminiApiKey], cors: true }, async (re
             const apiKey = geminiApiKey.value();
             const genAI = new GoogleGenerativeAI(apiKey);
             
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             
             // 시스템 프롬프트 (AI 역할 부여)
             const systemPrompt = `당신은 '제로메디컬'의 친절한 온라인 CS 전문가입니다.
