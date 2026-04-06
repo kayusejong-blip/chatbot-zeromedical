@@ -275,7 +275,7 @@ function loadVideos() {
                 <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">커스텀 텍스트 답변 (기본 답변 대신 출력될 내용)</label>
                 <textarea id="text-${leaf.id}" placeholder="해당 항목 선택시 보여줄 상세한 텍스트 답변을 다채롭게 입력하세요..." style="width:100%; height:80px; padding:10px; border-radius:8px; border:1px solid #d1d5db; resize:vertical; font-family:inherit;">${currentText}</textarea>
                 <div style="display:flex; justify-content:flex-end;">
-                    <button onclick="saveTreeText('${leaf.id}')" style="background:#4b5563; color:white; border:none; border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer;">텍스트만 따로 저장</button>
+                    <button onclick="saveTreeText('${leaf.id}', this)" style="background:#4b5563; color:white; border:none; border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer;">텍스트만 따로 저장</button>
                 </div>
             </div>
             
@@ -283,7 +283,7 @@ function loadVideos() {
                 <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">추가 영상 링크 (URL)</label>
                 <div style="display:flex; gap:10px;">
                     <input type="text" id="url-${leaf.id}" value="${currentUrl}" placeholder="https://youtube.com/... (또는 외부 링크)" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db;">
-                    <button onclick="saveTreeUrl('${leaf.id}')" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 20px; font-weight:600; cursor:pointer;">링크 저장</button>
+                    <button onclick="saveTreeUrl('${leaf.id}', this)" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 20px; font-weight:600; cursor:pointer;">링크 저장</button>
                 </div>
             </div>
         `;
@@ -291,10 +291,9 @@ function loadVideos() {
     });
 }
 
-window.saveTreeText = function(id) {
+window.saveTreeText = function(id, btn) {
     let inputText = document.getElementById(`text-${id}`).value.trim();
     db.ref('settings/responses/' + id + '/text').set(inputText).then(() => {
-        const btn = event.currentTarget;
         const originalText = btn.textContent;
         btn.textContent = "저장완료!";
         btn.style.background = "#059669";
@@ -308,10 +307,9 @@ window.saveTreeText = function(id) {
     });
 }
 
-window.saveTreeUrl = function(id) {
+window.saveTreeUrl = function(id, btn) {
     let inputUrl = document.getElementById(`url-${id}`).value.trim();
     db.ref('settings/responses/' + id + '/url').set(inputUrl).then(() => {
-        const btn = event.currentTarget;
         const originalText = btn.textContent;
         btn.textContent = "저장완료!";
         btn.style.background = "#059669";
