@@ -96,13 +96,16 @@ function handleNode(node, isBack = false) {
         showOptions(node.options);
     } 
     // 액션 노드 처리
-    else if (node.type === "send_video_link") {
+    else if (node.type === "video_solution" || node.type === "send_video_link") {
         let defaultTitle = "추천 영상";
         let targetUrl = "";
         
         if (node.video_key) {
-            const videoInfo = chatData.video_db.videos.find(v => v.key === node.video_key);
-            if (videoInfo) defaultTitle = videoInfo.title;
+            // video_db가 없으므로 생략 또는 기본 로직 유지
+            if(chatData.video_db && chatData.video_db.videos) {
+                const videoInfo = chatData.video_db.videos.find(v => v.key === node.video_key);
+                if (videoInfo) defaultTitle = videoInfo.title;
+            }
         }
 
         // Firebase 커스텀 트리 응답 덮어쓰기 로직
@@ -140,12 +143,14 @@ function handleNode(node, isBack = false) {
         
         nextTimeout = setTimeout(() => {
             addMessage(videoHtml, "bot");
-            if (node.follow_up && node.follow_up.options) {
-                showOptions(node.follow_up.options);
+            // 기존 follow_up.options 거나 현재 node.options 활용
+            let opts = (node.follow_up && node.follow_up.options) ? node.follow_up.options : node.options;
+            if (opts) {
+                showOptions(opts);
             }
         }, 800);
     } 
-    else if (node.type === "request_customer_video") {
+    else if (node.type === "media_request" || node.type === "request_customer_video") {
         let contentHtml = node.message;
         // 커스텀 텍스트 덮어쓰기
         if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
@@ -153,12 +158,12 @@ function handleNode(node, isBack = false) {
         }
         addMessage(contentHtml, "bot");
 
-        showOptions([
-            { label: "📷 사진/영상 첨부하기", action: "UPLOAD" },
-            { label: "🔄 처음으로 돌아가기", next: "RESTART" }
-        ]);
+        let opts = node.options || [
+            { label: "📷 사진/영상 첨부하기", action: "UPLOAD" }
+        ];
+        showOptions(opts);
     }
-    else if (node.type === "escalate" || node.type === "end") {
+    else if (node.type === "escalate" || node.type === "escalate_call" || node.type === "end") {
         let contentHtml = node.message;
         if (node.triggerId && treeResponses[node.triggerId] && treeResponses[node.triggerId].text) {
             contentHtml = treeResponses[node.triggerId].text.replace(/\n/g, '<br>');
@@ -167,7 +172,13 @@ function handleNode(node, isBack = false) {
 
         saveSessionToStorage(node.type === "end" ? "해결 완료" : "상담원 연결 요망");
 
-        showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
+        // 여기서 직접 버튼을 렌더링하는 대신 빈 배열로 showOptions()를 호출하면, 범용 로직에 의해 '홈/이전' 버튼이 자동으로 달립니다.
+        // escalate는 최종 목적지 중 하나이므로, node.options가 있다면 그것을, 없다면 빈 배열을 보내어 하단의 fallback이 그려지게 합니다.
+        if (node.options && node.options.length > 0) {
+            showOptions(node.options);
+        } else {
+            showOptions([]); 
+        }
 
         if (node.next) {
             nextTimeout = setTimeout(() => handleNext(node.next), 1500);
