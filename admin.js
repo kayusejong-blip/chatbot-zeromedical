@@ -250,44 +250,70 @@ function loadVideos() {
     }
     traverse("L1", "");
 
-    // 트리 리스트 렌더링
+    // 트리 리스트 렌더링 (카테고리별 디테일 뷰)
+    // 1. Group by category
+    let groupedNodes = {};
     leafNodes.forEach(leaf => {
-        let savedData = responseSettings[leaf.id] || {};
-        let currentUrl = savedData.url || "";
-        let currentText = savedData.text || "";
+        let category = leaf.path.split(" > ")[0];
+        if (!groupedNodes[category]) groupedNodes[category] = [];
+        groupedNodes[category].push(leaf);
+    });
+
+    // 2. Render each group
+    Object.keys(groupedNodes).forEach(category => {
+        let details = document.createElement('details');
+        details.style = "margin-bottom: 15px; border: 1px solid #d1d5db; border-radius: 8px; background: white; overflow: hidden;";
+        // 필요 시 첫 번째 열림: if (category === Object.keys(groupedNodes)[0]) details.open = true;
+
+        let summary = document.createElement('summary');
+        summary.style = "background: #f3f4f6; padding: 15px 20px; font-weight: bold; font-size: 1.1rem; cursor: pointer; border-bottom: 1px solid #e5e7eb; list-style: none; display: flex; justify-content: space-between; align-items: center;";
+        summary.innerHTML = `<span>📁 ${category}</span> <span style="font-size:0.9rem; color:#6b7280; font-weight:normal;">(${groupedNodes[category].length}개 항목) ▾</span>`;
+        details.appendChild(summary);
+
+        let contentWrap = document.createElement('div');
+        contentWrap.style = "padding: 20px; display: flex; flex-direction: column; gap: 20px; background: #ffffff;";
+
+        groupedNodes[category].forEach(leaf => {
+            let savedData = responseSettings[leaf.id] || {};
+            let currentUrl = savedData.url || "";
+            let currentText = savedData.text || "";
+            
+            let card = document.createElement('div');
+            card.className = 'video-card';
+            card.style = "background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; align-items: flex-start; flex-direction: column; gap: 15px;";
+
+            let actionBadge = "";
+            if(leaf.nextAction === "VIDEO") actionBadge = `<span style="background:#818cf8; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">영상 제공 액션</span>`;
+            if(leaf.nextAction === "REQUEST_VIDEO") actionBadge = `<span style="background:#fb923c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">미디어 요청 액션</span>`;
+            if(leaf.nextAction.includes("ESCALATE")) actionBadge = `<span style="background:#f87171; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">상담원 연결 액션</span>`;
+
+            card.innerHTML = `
+                <div style="width:100%; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; padding-bottom:10px;">
+                    <div style="font-weight:600; color:#374151;">📍 경로: ${leaf.path}</div>
+                    ${actionBadge}
+                </div>
+                
+                <div style="width:100%; display:flex; flex-direction:column; gap:10px;">
+                    <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">커스텀 텍스트 답변 (기본 답변 대신 출력될 내용)</label>
+                    <textarea id="text-${leaf.id}" placeholder="해당 항목 선택시 보여줄 상세한 텍스트 답변을 다채롭게 입력하세요..." style="width:100%; height:80px; padding:10px; border-radius:8px; border:1px solid #d1d5db; resize:vertical; font-family:inherit;">${currentText}</textarea>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button onclick="saveTreeText('${leaf.id}', this)" style="background:#4b5563; color:white; border:none; border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer;">텍스트만 따로 저장</button>
+                    </div>
+                </div>
+                
+                <div style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:5px; padding-top:15px; border-top:1px dashed #d1d5db;">
+                    <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">추가 영상 링크 (URL)</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="url-${leaf.id}" value="${currentUrl}" placeholder="https://youtube.com/... (또는 외부 링크)" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db;">
+                        <button onclick="saveTreeUrl('${leaf.id}', this)" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 20px; font-weight:600; cursor:pointer;">링크 저장</button>
+                    </div>
+                </div>
+            `;
+            contentWrap.appendChild(card);
+        });
         
-        let card = document.createElement('div');
-        card.className = 'video-card';
-        card.style = "background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; align-items: flex-start; flex-direction: column; gap: 15px;";
-
-        let actionBadge = "";
-        if(leaf.nextAction === "VIDEO") actionBadge = `<span style="background:#818cf8; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">영상 제공 액션</span>`;
-        if(leaf.nextAction === "REQUEST_VIDEO") actionBadge = `<span style="background:#fb923c; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">미디어 요청 액션</span>`;
-        if(leaf.nextAction.includes("ESCALATE")) actionBadge = `<span style="background:#f87171; color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem;">상담원 연결 액션</span>`;
-
-        card.innerHTML = `
-            <div style="width:100%; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; padding-bottom:10px;">
-                <div style="font-weight:600; color:#374151;">📍 경로: ${leaf.path}</div>
-                ${actionBadge}
-            </div>
-            
-            <div style="width:100%; display:flex; flex-direction:column; gap:10px;">
-                <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">커스텀 텍스트 답변 (기본 답변 대신 출력될 내용)</label>
-                <textarea id="text-${leaf.id}" placeholder="해당 항목 선택시 보여줄 상세한 텍스트 답변을 다채롭게 입력하세요..." style="width:100%; height:80px; padding:10px; border-radius:8px; border:1px solid #d1d5db; resize:vertical; font-family:inherit;">${currentText}</textarea>
-                <div style="display:flex; justify-content:flex-end;">
-                    <button onclick="saveTreeText('${leaf.id}', this)" style="background:#4b5563; color:white; border:none; border-radius:6px; padding:8px 16px; font-weight:600; cursor:pointer;">텍스트만 따로 저장</button>
-                </div>
-            </div>
-            
-            <div style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:5px; padding-top:15px; border-top:1px dashed #d1d5db;">
-                <label style="font-size:0.85rem; font-weight:600; color:#4b5563;">추가 영상 링크 (URL)</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="url-${leaf.id}" value="${currentUrl}" placeholder="https://youtube.com/... (또는 외부 링크)" style="flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db;">
-                    <button onclick="saveTreeUrl('${leaf.id}', this)" style="background:var(--primary); color:white; border:none; border-radius:8px; padding:0 20px; font-weight:600; cursor:pointer;">링크 저장</button>
-                </div>
-            </div>
-        `;
-        container.appendChild(card);
+        details.appendChild(contentWrap);
+        container.appendChild(details);
     });
 }
 
