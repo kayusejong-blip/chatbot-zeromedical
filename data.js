@@ -17,10 +17,7 @@ const chatDataRaw = {
         "type": "button_select",
         "options": [
             { "id": "OPT_DELIVERY", "label": "📦 배송/수령 문의", "next": "L2_DELIVERY" },
-            { "id": "OPT_RETURN", "label": "🔄 교환/반품/취소", "next": "L2_RETURN" },
-            { "id": "OPT_MANUAL", "label": "📄 제품 조립/사용법", "next": "L2_MANUAL" },
-            { "id": "OPT_TROUBLE", "label": "⚠️ 사용 중 문제 해결", "next": "L2_TROUBLE" },
-            { "id": "OPT_AS", "label": "🛠️ A/S 및 부품 구매", "next": "L2_AS" }
+            { "id": "OPT_RETURN", "label": "🔄 교환/반품/취소", "next": "L2_RETURN" }
         ]
     },
 
