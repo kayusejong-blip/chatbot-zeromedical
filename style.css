@@ -260,25 +260,30 @@ body {
     border-top: 1px solid #F3F4F6;
 }
 
-.input-area input {
+.input-area textarea {
     flex: 1;
     padding: 12px 18px;
     border: 1px solid #E5E7EB;
-    border-radius: 24px;
+    border-radius: 20px;
     font-size: 0.95rem;
     outline: none;
     transition: border 0.2s, box-shadow 0.2s;
     background: #F9FAFB;
     color: var(--text-main);
+    resize: none;
+    line-height: 1.4;
+    font-family: inherit;
+    /* hide scrollbar for a cleaner look when typing short text */
+    overflow-y: auto;
 }
 
-.input-area input:focus {
+.input-area textarea:focus {
     border-color: var(--primary-light);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     background: white;
 }
 
-.input-area input::placeholder {
+.input-area textarea::placeholder {
     color: var(--text-light);
 }
 

@@ -39,7 +39,7 @@
 
                 <!-- Free Text Input Area -->
                 <div class="input-area">
-                    <input type="text" id="user-free-text" placeholder="문의사항을 입력해 주세요..." onkeypress="if(event.key==='Enter') sendUserText()">
+                    <textarea id="user-free-text" rows="1" placeholder="문의사항을 입력해 주세요..." onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendUserText(); }" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 100) + 'px'"></textarea>
                     <button class="send-btn" onclick="sendUserText()">전송</button>
                     <!-- Hidden file input for Photo/Video upload -->
                     <input type="file" id="media-upload" accept="image/*,video/*" style="display:none;" onchange="handleFileUpload(event)">

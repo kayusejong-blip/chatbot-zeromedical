@@ -461,9 +461,10 @@ window.sendUserText = async function() {
     if (isAiProcessing) return; // 중복 요청 방지
     
     input.value = '';
+    input.style.height = 'auto'; // 리셋
     
-    // UI 및 스토리지 업데이트
-    addMessage(text, "user");
+    // UI 및 스토리지 업데이트 (줄바꿈 <br> 처리 반영)
+    addMessage(text.replace(/\n/g, '<br>'), "user", text);
     
     // 관리자 직접 개입 중이면 AI 우회 (기존 로직 유지)
     if (currentSessionStatus === '관리자 직접 개입') {
