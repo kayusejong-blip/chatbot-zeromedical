@@ -64,9 +64,13 @@ function initFirebaseSync() {
 function startFlow() {
     nodeHistory = [];
     currentNode = null;
-    // 처음 진입점 (Layer 1)
-    const startNode = chatData.layer1_classification;
-    handleNode(startNode);
+    const startNode = chatData.nodes["START"];
+    if (!startNode && chatData.layer1_classification) {
+         // fallback
+         handleNode(chatData.layer1_classification);
+    } else {
+         handleNode(startNode);
+    }
 }
 
 function handleNode(node, isBack = false) {
@@ -186,25 +190,15 @@ function handleNext(nextId, videoKey = null, triggerId = null) {
 
     let targetNode = null;
 
-    // 1. Layer 2 확인
-    if (nextId === "L2_PRE") targetNode = chatData.layer2.pre_purchase;
-    else if (nextId === "L2_USE") targetNode = chatData.layer2.in_use;
-    else if (nextId === "L2_AS") targetNode = chatData.layer2.after_service;
-    
-    // 2. Layer 3 (진단) 확인
-    else if (nextId === "L3_BRAKE") targetNode = chatData.layer3_diagnosis.brake.step1;
-    else if (nextId === "L3_WHEEL") targetNode = chatData.layer3_diagnosis.wheel;
-    else if (nextId === "L3_SEAT") targetNode = chatData.layer3_diagnosis.seat;
-    else if (nextId === "L3_FRAME") targetNode = chatData.layer3_diagnosis.frame;
-    else if (nextId === "L3_FOOTREST") targetNode = chatData.layer3_diagnosis.footrest;
-    
-    else if (nextId === "L3_BRAKE_USER_SYMPTOM") targetNode = chatData.layer3_diagnosis.brake.step2_user;
-    else if (nextId === "L3_BRAKE_CARER_SYMPTOM") targetNode = chatData.layer3_diagnosis.brake.step2_carer;
-    
-    // 3. Actions 확인
-    else if (chatData.actions[nextId]) {
+    if (chatData.nodes && chatData.nodes[nextId]) {
+        targetNode = Object.assign({}, chatData.nodes[nextId]);
+        targetNode.triggerId = triggerId;
+        if (videoKey && targetNode.id === "VIDEO") {
+            targetNode.video_key = videoKey;
+        }
+    } else if (chatData.actions && chatData.actions[nextId]) {
         targetNode = Object.assign({}, chatData.actions[nextId]); 
-        targetNode.triggerId = triggerId; // 커스텀 텍스트 매핑용 트리거 옵션 ID 전달
+        targetNode.triggerId = triggerId;
         if (videoKey && targetNode.id === "VIDEO") {
             targetNode.video_key = videoKey; 
         }

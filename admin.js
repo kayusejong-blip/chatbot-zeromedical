@@ -210,29 +210,16 @@ function loadVideos() {
     const container = document.getElementById('video-list-container');
     container.innerHTML = '';
     
-    // 버튼 경로 추적 BFS/DFS
-    let nodeMap = {
-        "L1": chatDataRaw.layer1_classification,
-        "L2_PRE": chatDataRaw.layer2.pre_purchase,
-        "L2_USE": chatDataRaw.layer2.in_use,
-        "L2_AS": chatDataRaw.layer2.after_service,
-        "L3_BRAKE": chatDataRaw.layer3_diagnosis.brake.step1,
-        "L3_WHEEL": chatDataRaw.layer3_diagnosis.wheel,
-        "L3_SEAT": chatDataRaw.layer3_diagnosis.seat,
-        "L3_FRAME": chatDataRaw.layer3_diagnosis.frame,
-        "L3_FOOTREST": chatDataRaw.layer3_diagnosis.footrest,
-        "L3_ARMREST": chatDataRaw.layer3_diagnosis.armrest,
-        "L3_BRAKE_USER_SYMPTOM": chatDataRaw.layer3_diagnosis.brake.step2_user,
-        "L3_BRAKE_CARER_SYMPTOM": chatDataRaw.layer3_diagnosis.brake.step2_carer
-    };
-
+    // 버튼 경로 추적 BFS/DFS (동적 노드 파싱)
+    let nodeMap = chatDataRaw.nodes;
     let leafNodes = [];
 
     function traverse(nodeId, currentPath) {
         const node = nodeMap[nodeId];
         if (!node || !node.options) return;
         node.options.forEach(opt => {
-            let label = opt.label.replace(/[🛞🪑🦽🔒]/g, "").trim();
+            // 이모지 필터링
+            let label = opt.label.replace(/[🛞🪑🦽🔒📦🔄📄⚠️🛠️🔌🔊🔩💬👍👎📸🖼️]/g, "").trim();
             let newPath = currentPath ? currentPath + " > " + label : label;
             
             // 만약 다음 노드가 액션 노드(Leaf)에 도달한다면 리스트에 추가
@@ -248,7 +235,27 @@ function loadVideos() {
             }
         });
     }
-    traverse("L1", "");
+    
+    if (nodeMap["START"]) {
+        traverse("START", "");
+    } else if (chatDataRaw.layer1_classification) {
+        // Fallback for older version
+        nodeMap = {
+            "L1": chatDataRaw.layer1_classification,
+            "L2_PRE": chatDataRaw.layer2.pre_purchase,
+            "L2_USE": chatDataRaw.layer2.in_use,
+            "L2_AS": chatDataRaw.layer2.after_service,
+            "L3_BRAKE": chatDataRaw.layer3_diagnosis.brake.step1,
+            "L3_WHEEL": chatDataRaw.layer3_diagnosis.wheel,
+            "L3_SEAT": chatDataRaw.layer3_diagnosis.seat,
+            "L3_FRAME": chatDataRaw.layer3_diagnosis.frame,
+            "L3_FOOTREST": chatDataRaw.layer3_diagnosis.footrest,
+            "L3_ARMREST": chatDataRaw.layer3_diagnosis.armrest,
+            "L3_BRAKE_USER_SYMPTOM": chatDataRaw.layer3_diagnosis.brake.step2_user,
+            "L3_BRAKE_CARER_SYMPTOM": chatDataRaw.layer3_diagnosis.brake.step2_carer
+        };
+        traverse("L1", "");
+    }
 
     // 트리 리스트 렌더링 (재귀적 딥 트리 구조)
     // 1. Build generic tree from leaf paths
