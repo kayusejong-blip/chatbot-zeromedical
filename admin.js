@@ -4,8 +4,6 @@ function loadSessionsFromFirebase() {
     db.ref('sessions').orderByChild("timestamp").on('value', snapshot => {
         let data = snapshot.val();
         if (data) {
-            // 객체를 배열로 변환하고 최신순(작성 시간이 큰 순서) 정렬 처리
-            // timestamp가 없을 수 있으므로 예외처리 포함
             allSessions = Object.values(data).sort((a, b) => {
                 let ta = a.timestamp || 0;
                 let tb = b.timestamp || 0;
@@ -18,7 +16,6 @@ function loadSessionsFromFirebase() {
         if (currentTab === 'sessions') {
             renderSessionList();
             
-            // 현재 선택된 세션이 있다면 디테일 뷰도 업데이트 (동기화)
             if (currentSelectedSessionId) {
                 let s = allSessions.find(s => s.sessionId === currentSelectedSessionId);
                 if (s) showSessionDetail(s);
@@ -33,9 +30,18 @@ function loadSessionsFromFirebase() {
             loadVideos();
         }
     });
+
+    // 모범답변 DB 실시간 감시
+    db.ref('knowledgeBase').on('value', snapshot => {
+        knowledgeData = snapshot.val() || {};
+        if (currentTab === 'knowledge') {
+            renderKnowledgeList();
+        }
+    });
 }
 
 let responseSettings = {};
+let knowledgeData = {};
 
 function renderSessionList() {
     document.getElementById('total-sessions').textContent = `총 세션: ${allSessions.length}`;
@@ -96,6 +102,12 @@ function showSessionDetail(session) {
     const messagesContainer = document.getElementById('detail-messages');
 
     headerTitle.textContent = `대화 상세: ${session.sessionId}`;
+    headerTitle.style.display = 'flex';
+    headerTitle.style.alignItems = 'center';
+    headerTitle.style.gap = '10px';
+    headerTitle.style.flexWrap = 'wrap';
+    headerTitle.innerHTML = `대화 상세: ${session.sessionId}
+        <button onclick="saveSessionAsKnowledge('${session.sessionId}')" style="padding: 6px 14px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap;">🧠 모범답변 저장</button>`;
     
     headerStatus.style.display = 'inline-block';
     headerStatus.className = 'badge';
@@ -185,6 +197,7 @@ function switchTab(tab, event) {
     // 모든 탭 컨텐츠 숨기기
     document.getElementById('view-sessions').style.display = 'none';
     document.getElementById('view-videos').style.display = 'none';
+    document.getElementById('view-knowledge').style.display = 'none';
     document.getElementById('view-changelog').style.display = 'none';
     
     // 메뉴 액티브 상태 초기화
@@ -199,6 +212,10 @@ function switchTab(tab, event) {
         document.getElementById('view-videos').style.display = 'flex';
         document.getElementById('page-title').textContent = '버튼 트리 맞춤 답변 관리';
         loadVideos();
+    } else if (tab === 'knowledge') {
+        document.getElementById('view-knowledge').style.display = 'flex';
+        document.getElementById('page-title').textContent = '🧠 AI 학습 데이터 관리';
+        renderKnowledgeList();
     } else if (tab === 'changelog') {
         document.getElementById('view-changelog').style.display = 'block';
         document.getElementById('page-title').textContent = '버전 업데이트 창고';
@@ -389,3 +406,137 @@ window.saveTreeUrl = function(id, btn) {
         alert("링크 설정 저장 실패!");
     });
 }
+
+// ============== AI 학습 데이터 (모범답변 Knowledge Base) ==============
+
+// 모범답변 수동 등록
+window.saveKnowledgeEntry = function() {
+    const question = document.getElementById('kb-question').value.trim();
+    const answer = document.getElementById('kb-answer').value.trim();
+    const category = document.getElementById('kb-category').value;
+
+    if (!question || !answer) {
+        alert("질문과 답변을 모두 입력해주세요.");
+        return;
+    }
+
+    const newRef = db.ref('knowledgeBase').push();
+    newRef.set({
+        id: newRef.key,
+        question: question,
+        answer: answer,
+        category: category,
+        source: "수동등록",
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        date: new Date().toLocaleDateString('ko-KR')
+    }).then(() => {
+        document.getElementById('kb-question').value = '';
+        document.getElementById('kb-answer').value = '';
+        alert("✅ 모범답변이 등록되었습니다! AI가 즉시 참고합니다.");
+    }).catch(e => {
+        console.error(e);
+        alert("등록 실패");
+    });
+};
+
+// 세션 대화에서 모범답변으로 저장 (관리자가 직접한 응대를 학습 데이터로 변환)
+window.saveSessionAsKnowledge = function(sessionId) {
+    const session = allSessions.find(s => s.sessionId === sessionId);
+    if (!session || !session.messages) {
+        alert("대화 내용이 없습니다.");
+        return;
+    }
+
+    const msgs = Object.values(session.messages);
+    
+    // 사용자 질문과 관리자/봇 답변 쌍을 추출
+    let pairs = [];
+    let lastUserMsg = null;
+
+    msgs.forEach(msg => {
+        if (msg.sender === 'user') {
+            lastUserMsg = msg.text;
+        } else if ((msg.sender === 'admin' || msg.sender === 'bot') && lastUserMsg) {
+            // bot의 자동 메시지 필터링 (너무 짧거나 시스템 메시지 제외)
+            if (msg.text && msg.text.length > 5 && !msg.text.includes('선택해 주세요') && !msg.text.includes('카테고리를')) {
+                pairs.push({ question: lastUserMsg, answer: msg.text });
+            }
+            lastUserMsg = null;
+        }
+    });
+
+    if (pairs.length === 0) {
+        alert("저장할 유의미한 Q&A 쌍이 없습니다.\n(사용자 질문 → 관리자/AI 답변 패턴이 필요합니다)");
+        return;
+    }
+
+    if (!confirm(`이 세션에서 ${pairs.length}개의 Q&A 쌍을 모범답변으로 저장하시겠습니까?`)) return;
+
+    let saveCount = 0;
+    pairs.forEach(pair => {
+        const newRef = db.ref('knowledgeBase').push();
+        newRef.set({
+            id: newRef.key,
+            question: pair.question,
+            answer: pair.answer,
+            category: "세션추출",
+            source: `세션: ${sessionId}`,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            date: new Date().toLocaleDateString('ko-KR')
+        }).then(() => {
+            saveCount++;
+            if (saveCount === pairs.length) {
+                alert(`✅ ${saveCount}개의 모범답변이 저장되었습니다!`);
+            }
+        });
+    });
+};
+
+// 모범답변 목록 렌더링
+function renderKnowledgeList() {
+    const listContainer = document.getElementById('kb-list');
+    const countEl = document.getElementById('kb-count');
+    
+    const entries = Object.values(knowledgeData);
+    countEl.textContent = entries.length;
+
+    if (entries.length === 0) {
+        listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">등록된 모범답변이 없습니다.<br>위 폼에서 직접 등록하거나, 채팅 세션에서 [🧠 모범답변 저장] 버튼을 사용하세요.</div>';
+        return;
+    }
+
+    // 최신순 정렬
+    entries.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    listContainer.innerHTML = entries.map(entry => `
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <span style="background: #818cf8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${entry.category || '일반'}</span>
+                    <span style="font-size: 0.75rem; color: #9ca3af;">${entry.source || ''} · ${entry.date || ''}</span>
+                </div>
+                <button onclick="deleteKnowledgeEntry('${entry.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 4px 8px;">🗑 삭제</button>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="font-weight: 600; color: #374151; font-size: 0.85rem;">Q: </span>
+                <span style="color: #374151; font-size: 0.85rem;">${entry.question}</span>
+            </div>
+            <div style="background: #ecfdf5; border-radius: 8px; padding: 10px 12px;">
+                <span style="font-weight: 600; color: #059669; font-size: 0.85rem;">A: </span>
+                <span style="color: #065f46; font-size: 0.85rem;">${entry.answer}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 모범답변 삭제
+window.deleteKnowledgeEntry = function(id) {
+    if (!confirm("이 모범답변을 삭제하시겠습니까?\nAI가 더 이상 이 데이터를 참고하지 않게 됩니다.")) return;
+    
+    db.ref('knowledgeBase/' + id).remove().then(() => {
+        // 실시간 리스너가 자동으로 목록을 갱신합니다
+    }).catch(e => {
+        console.error(e);
+        alert("삭제 실패");
+    });
+};
