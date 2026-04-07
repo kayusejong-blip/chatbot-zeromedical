@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>CS Admin 대시보드</title>
+    <link rel="stylesheet" href="admin.css?v=4.8">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>🛠 CS Admin</h2>
+                <span class="version">v4.8</span>
+            </div>
+            <nav class="menu">
+                <a href="#" class="active" onclick="switchTab('sessions', event)">최근 채팅 내역</a>
+                <a href="#" onclick="switchTab('videos', event)">버튼 트리 맞춤 답변 관리</a>
+                <a href="#" onclick="switchTab('knowledge', event)">🧠 AI 학습 데이터</a>
+                <a href="#" onclick="switchTab('changelog', event)">버전 업데이트 창고</a>
+                <a href="index.html?v=4.8" style="margin-top:auto;" target="_blank">사용자 화면 미리보기</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="page-title">실시간 관리자 대시보드</h1>
+                <div class="stats">
+                    <span id="total-sessions">총 세션: 0</span>
+                </div>
+            </header>
+
+            <div class="dashboard-body" id="view-sessions">
+                <!-- Session List -->
+                <div class="session-list-container">
+                    <h3>채팅 세션 목록</h3>
+                    <ul class="session-list" id="session-list">
+                        <!-- Sessions 정렬될 위치 -->
+                    </ul>
+                </div>
+
+                <!-- Chat Detail View -->
+                <div class="chat-detail-container">
+                    <header class="detail-header" id="detail-header">
+                        <h3>대화 상세 (세션을 선택하세요)</h3>
+                        <span class="status-badge" style="display:none;" id="detail-status"></span>
+                    </header>
+                    <div class="detail-messages" id="detail-messages">
+                        <div class="empty-state">
+                            <p>좌측 목록에서 세션을 선택하여<br>대화 내용을 확인하세요.</p>
+                        </div>
+                    </div>
+                    <div class="admin-reply-container" id="admin-reply-container" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
+                        <form style="display: flex; gap: 10px;" onsubmit="event.preventDefault(); sendAdminReply();">
+                            <input type="text" id="admin-reply-input" placeholder="실시간 관리자 개입 메시지 입력 (Enter 전송)" style="flex: 1; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; outline: none; transition: border-color 0.2s;">
+                            <button type="submit" style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">전송</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Management View -->
+            <div class="dashboard-body" id="view-videos" style="display: none; flex-direction: column; overflow-y: auto;">
+                <div class="video-admin-panel" style="background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+                    <h3 style="margin-bottom: 20px; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">🔗 버튼 트리 맞춤 답변 (텍스트 & 링크) 관리</h3>
+                    <p style="margin-bottom: 20px; color: var(--text-muted);">챗봇 내부의 각 질문 경로(버튼 트리)별로 제공될 최종 안내 텍스트와 영상 링크를 직접 수정할 수 있습니다.<br>설정 즉시 고객 응대 화면에 실시간으로 적용됩니다.</p>
+                    <div id="video-list-container" class="video-list-container">
+                        <!-- 영상 카드들이 렌더링될 위치 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Changelog View -->
+            <div class="dashboard-body" id="view-changelog" style="display: none; padding: 30px; overflow-y: auto;">
+                <div style="background: var(--log-bg, #111827); border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);">
+                    <h2 style="color: white; font-size: 1.25rem; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">📝 시스템 변경 내역(업데이트 로그)</h2>
+                    <ul class="log-list" style="list-style: none; display: flex; flex-direction: column; gap: 20px; padding: 0;">
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: #10b981; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.8</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>미디어 간편 첨부 기능 추가:</strong> 언제든지 사용자가 직관적으로 사진이나 영상을 첨부할 수 있도록 채팅 입력창 좌측에 파일 업로드용 버튼(+)을 상시 배치.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.7</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>봇 메시지 어조 및 단어 수정:</strong> 기타 문의용 Fallback 응답 메시지 및 첨부 파일 요청 메시지 등에서 기계적인 '파손된 부위 등'을 '문제가 되는 부분'으로, '담당 엔지니어'를 '상담원'으로 변경.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.6</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>오토 스크롤링(Auto-scrolling) 최적화:</strong> 사용자가 안내 버튼을 클릭했을 때 옵션 버튼들이 지워지면서 레이아웃이 변하는 미세한 렌더링 지연을 포착하고 스크롤 이벤트를 최적화, 사용자의 선택값(입력된 메시지)이 화면에서 가려지지 않고 깔끔하게 최하단으로 집중되도록 수정.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.5</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>안내 메시지 표현 다듬기:</strong> 응대 텍스트 내에서 AI 봇 특유의 어색한 느낌을 주었던 마크다운 강조 표시(** 등)를 제거하여, 더 자연스러운 고객센터 문체로 정돈.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.4</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>대량구매 전용 양식 적용:</strong> 대량구매 문의 시 출력되는 양식을 (희망 수량, 납기일, 담당자 연락처) 등 맞춤형으로 분리하여 고도화.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.3</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>대량구매 문의 버튼 신규 추가:</strong> 사용자가 최초 스킬트리에서 바로 대량구매 문의를 할 수 있도록 버튼을 추가하고 상담원 연결로 연동.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.2</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>AI 학습 데이터(Knowledge Base) 시스템:</strong> 관리자가 모범답변을 직접 등록하면 AI가 유사 질문에 참고하는 컨텍스트 주입 방식 도입.<br>
+                                - 채팅 세션에서 [🧠 모범답변 저장] 버튼으로 관리자 응대 기록을 학습 데이터로 자동 변환 가능.<br>
+                                - Cloud Function에 Firebase RTDB 연동하여 knowledgeBase 자동 로딩 구현.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.1</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>버튼 UI 컴팩트화:</strong> 옵션 버튼을 텍스트 길이에 맞게 자동 사이징, 한 줄에 여러 개 배치(flex-wrap). 설명 포함 버튼만 풀 너비 유지.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.0</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>Gemini AI CS 봇 통합:</strong> Google Gemini 2.5 Flash 모델 연동. Firebase Cloud Functions + Secret Manager로 API 키 보안 처리.<br>
+                                - 사용자 자유 질문 시 AI가 제로메디컬 CS 전문가로서 실시간 답변 생성. 타이핑 인디케이터(바운싱 도트) 및 후속 액션 버튼 추가.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v3.1</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>미디어 Cloud Storage 전환:</strong> 기존 Realtime Database 용량 한계로 인해 영상 첨부가 불가능했던 문제를 해결하기 위해, 전용 무상 클라우드 스토리지 시스템을 신규 연동.<br>이제 대용량 영상도 실시간 업로드 및 진행률 표시가 가능합니다. UI 모바일 최적화 및 어드민 내 로그 창고 분리.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v3.0</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>Firebase Realtime Database 연동:</strong> 로컬스토리지를 제거하고 실제 상용 수준의 실시간 클라우드 DB 연동 완료.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v2.2</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>폴백 버튼(Fallback) 예외 처리:</strong> 모든 트리에 [찾는 항목이 없어요] 버튼 추가 연동.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v2.1</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.06</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>사용자 자유 채팅 기능 (Free Text):</strong> 버튼식 UI 외 텍스트 자유 입력 채팅바 추가. 관리자에게 실시간 연동됨.
+                            </p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Knowledge Base Management View -->
+            <div class="dashboard-body" id="view-knowledge" style="display: none; flex-direction: column; overflow-y: auto; gap: 20px; padding: 20px;">
+                <!-- 모범답변 등록 폼 -->
+                <div style="background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+                    <h3 style="margin-bottom: 8px; font-size: 1.1rem;">➕ 모범 답변 수동 등록</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">자주 묻는 질문과 정확한 답변을 직접 등록하면 AI가 유사 질문에 이 답변을 참고합니다.</p>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; gap: 12px;">
+                            <select id="kb-category" style="padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; min-width: 140px;">
+                                <option value="일반">일반</option>
+                                <option value="배송">배송/수령</option>
+                                <option value="교환/반품">교환/반품</option>
+                                <option value="제품사용">제품 사용법</option>
+                                <option value="고장/AS">고장/A/S</option>
+                                <option value="부품">부품 구매</option>
+                            </select>
+                        </div>
+                        <input type="text" id="kb-question" placeholder="고객 질문 예시: 전동 휠체어 배터리 수명이 얼마나 되나요?" style="padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem;">
+                        <textarea id="kb-answer" placeholder="모범 답변: 일반적으로 2~3년(약 500회 충전 기준)이며, 사용 환경에 따라 달라질 수 있습니다." style="padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; height: 100px; resize: vertical; font-family: inherit;"></textarea>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button onclick="saveKnowledgeEntry()" style="padding: 12px 28px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s;">💾 모범답변 등록</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 등록된 모범답변 목록 -->
+                <div style="background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="font-size: 1.1rem;">📚 등록된 모범답변 목록 (<span id="kb-count">0</span>건)</h3>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">AI가 답변 시 이 데이터를 참고합니다</span>
+                    </div>
+                    <div id="kb-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="text-align: center; padding: 40px; color: #9ca3af;">로딩 중...</div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="firebase-config.js?v=4.8"></script>
+    
+    <script src="data.js?v=4.8"></script>
+    <script src="admin.js?v=4.8"></script>
+</body>
+</html>
