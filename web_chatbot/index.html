@@ -46,7 +46,7 @@
                             <line x1="8" y1="12" x2="16" y2="12"></line>
                         </svg>
                     </button>
-                    <textarea id="user-free-text" rows="1" placeholder="문의사항을 입력해 주세요..." onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendUserText(); }" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 100) + 'px'"></textarea>
+                    <textarea id="user-free-text" rows="1" placeholder="문의사항을 입력해 주세요..." onkeydown="if(event.key==='Enter' && !event.shiftKey && window.innerWidth > 768) { event.preventDefault(); sendUserText(); }" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 100) + 'px'"></textarea>
                     <button class="send-btn" onclick="sendUserText()">전송</button>
                     <!-- Hidden file input for Photo/Video upload -->
                     <input type="file" id="media-upload" accept="image/*,video/*" style="display:none;" onchange="handleFileUpload(event)">
