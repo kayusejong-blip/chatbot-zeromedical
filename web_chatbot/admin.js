@@ -1,16 +1,141 @@
 let allSessions = [];
+let knownSessions = {};
+let isInitialLoadDone = false;
+let alarmsEnabled = false;
+
+window.enableAlarms = function() {
+    alarmsEnabled = true;
+    if ("Notification" in window) {
+        if (Notification.permission !== "denied" && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    }
+    
+    // 무음으로라도 한번 재생하여 브라우저 AudioContext 잠금 해제
+    playSynthesizedAlarm(true);
+    
+    const btn = document.getElementById('btn-enable-alarm');
+    if (btn) {
+        btn.innerHTML = '🔔 알림 켜짐';
+        btn.style.background = '#dcfce7';
+        btn.style.color = '#166534';
+        btn.style.border = '1px solid #86efac';
+        btn.onclick = disableAlarms;
+    }
+};
+
+window.disableAlarms = function() {
+    alarmsEnabled = false;
+    const btn = document.getElementById('btn-enable-alarm');
+    if (btn) {
+        btn.innerHTML = '🔕 알림 꺼짐 (켜기 클릭)';
+        btn.style.background = '#fee2e2';
+        btn.style.color = '#991b1b';
+        btn.style.border = '1px solid #f87171';
+        btn.onclick = enableAlarms;
+    }
+};
+
+function playSynthesizedAlarm(silent = false) {
+    if (!alarmsEnabled) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1); 
+
+    let volume = silent ? 0.001 : 0.5;
+    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+    
+    if(!silent) {
+        setTimeout(() => {
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1318.51, ctx.currentTime);
+            gain2.gain.setValueAtTime(volume, ctx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start();
+            osc2.stop(ctx.currentTime + 0.5);
+        }, 150);
+    }
+}
+
+function showBrowserNotification(title, body) {
+    if (!alarmsEnabled || !("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+        const notification = new Notification(title, { body: body });
+        notification.onclick = function() {
+            window.focus();
+            this.close();
+        };
+    }
+}
 
 function loadSessionsFromFirebase() {
     db.ref('sessions').orderByChild("timestamp").on('value', snapshot => {
         let data = snapshot.val();
+        let notifyPromises = [];
+
         if (data) {
             allSessions = Object.values(data).sort((a, b) => {
                 let ta = a.timestamp || 0;
                 let tb = b.timestamp || 0;
                 return tb - ta;
             });
+
+            // 알람 조건 검사
+            for (let key in data) {
+                let session = data[key];
+                let isEscalated = session.status === '상담원 연결 요망' || session.status === '관리자 직접 개입' || session.status === '기타 문의 접수 됨 (상담 연결 요망)';
+                let msgCount = session.messages ? Object.keys(session.messages).length : 0;
+                
+                if (knownSessions[key]) {
+                    let prev = knownSessions[key];
+                    let wasEscalated = prev.status === '상담원 연결 요망' || prev.status === '관리자 직접 개입' || prev.status === '기타 문의 접수 됨 (상담 연결 요망)';
+                    
+                    if (!wasEscalated && isEscalated) {
+                        notifyPromises.push({ title: '🚨 상담원 호출', body: `세션 ${session.sessionId}에서 상담원을 호출했습니다.` });
+                    }
+                    else if (isEscalated && msgCount > prev.msgCount) {
+                        // 사용자가 보낸 새 메시지인지 확인하기 (시간상 복잡하므로 msgCount 증가만 체크해도 충분히 동작)
+                        notifyPromises.push({ title: '💬 새 메시지 도착', body: `세션 ${session.sessionId}에서 고객의 새 메시지가 있습니다.` });
+                    }
+                } else {
+                    if (isInitialLoadDone) {
+                        notifyPromises.push({ title: '✨ 새로운 고객 접속', body: `새로운 세션 ${session.sessionId}이(가) 시작되었습니다.` });
+                    }
+                }
+                
+                knownSessions[key] = {
+                    status: session.status,
+                    msgCount: msgCount
+                };
+            }
         } else {
             allSessions = [];
+        }
+        
+        if (!isInitialLoadDone) {
+            isInitialLoadDone = true;
+        } else if (notifyPromises.length > 0) {
+            if (alarmsEnabled) {
+                playSynthesizedAlarm(false);
+                notifyPromises.forEach(n => showBrowserNotification(n.title, n.body));
+            }
         }
         
         if (currentTab === 'sessions') {
@@ -43,31 +168,147 @@ function loadSessionsFromFirebase() {
 let responseSettings = {};
 let knowledgeData = {};
 
+let currentSessionFilter = 'ongoing'; // 기본값을 진행중 상담으로
+window.setSessionFilter = function(filterValue) {
+    currentSessionFilter = filterValue;
+    
+    // 안전하게 요소가 있는지 확인하며 클래스 제거/추가
+    const tabs = ['all', 'ongoing', 'req', 'done'];
+    tabs.forEach(tab => {
+        const el = document.getElementById('tab-filter-' + tab);
+        if (el) el.classList.remove('active');
+    });
+    
+    if (filterValue === 'all' && document.getElementById('tab-filter-all')) document.getElementById('tab-filter-all').classList.add('active');
+    else if (filterValue === 'ongoing' && document.getElementById('tab-filter-ongoing')) document.getElementById('tab-filter-ongoing').classList.add('active');
+    else if (filterValue === '상담원 개입' && document.getElementById('tab-filter-req')) document.getElementById('tab-filter-req').classList.add('active');
+    else if (filterValue === '해결 완료' && document.getElementById('tab-filter-done')) document.getElementById('tab-filter-done').classList.add('active');
+    
+    const bulkBar = document.getElementById('bulk-action-bar');
+    if (bulkBar) {
+        if (filterValue === 'ongoing' || filterValue === '상담원 개입') {
+            bulkBar.style.display = 'flex';
+        } else {
+            bulkBar.style.display = 'none';
+        }
+        const selectAllCb = document.getElementById('bulk-select-all');
+        if (selectAllCb) selectAllCb.checked = false;
+    }
+    
+    renderSessionList();
+};
+
+window.toggleAllSessions = function(isChecked) {
+    const checkboxes = document.querySelectorAll('.session-checkbox');
+    checkboxes.forEach(cb => cb.checked = isChecked);
+};
+
+window.resolveSelectedSessions = function() {
+    const checkboxes = document.querySelectorAll('.session-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert("선택된 세션이 없습니다.");
+        return;
+    }
+    
+    if(!confirm(`선택한 ${checkboxes.length}개의 세션을 '해결 완료' 처리하시겠습니까?`)) return;
+    
+    let updates = [];
+    const timeNow = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    
+    checkboxes.forEach(cb => {
+        let sessionId = cb.value;
+        let updatePromise = db.ref('sessions/' + sessionId).update({
+            status: "해결 완료",
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            let newRef = db.ref('sessions/' + sessionId + '/messages').push();
+            return newRef.set({
+                id: newRef.key,
+                sender: "admin",
+                text: "관리자에 의해 해당 상담이 일괄 종료(완료) 되었습니다.",
+                time: timeNow
+            });
+        });
+        updates.push(updatePromise);
+    });
+    
+    Promise.all(updates).then(() => {
+        alert("선택한 항목들이 모두 완료 처리되었습니다.");
+        const selectAllCb = document.getElementById('bulk-select-all');
+        if (selectAllCb) selectAllCb.checked = false; // 초기화
+    }).catch(e => {
+        console.error(e);
+        alert("일부 세션의 상태 변경에 실패했습니다.");
+    });
+};
+
 function renderSessionList() {
     document.getElementById('total-sessions').textContent = `총 세션: ${allSessions.length}`;
     
     const listContainer = document.getElementById('session-list');
     listContainer.innerHTML = '';
+    
+    let searchQuery = '';
+    const searchInput = document.getElementById('session-search');
+    if (searchInput) {
+        searchQuery = searchInput.value.trim().toLowerCase();
+    }
 
-    if (allSessions.length === 0) {
-        listContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #6B7280;">채팅 내역이 없습니다.</li>';
+    let filteredSessions = allSessions.filter(session => {
+        const s = session.status || '';
+        if (currentSessionFilter === 'ongoing') {
+            // '진행중 상담'은 해결 완료나 상담원 개입 상태가 아닌 모든 세션을 의미함
+            if (s === '해결 완료' || s === '상담원 연결 요망' || s === '관리자 직접 개입' || s === 'AI 오류 / 상담원 연결 필요') return false;
+        } else if (currentSessionFilter === '상담원 개입') {
+            if (s !== '상담원 연결 요망' && s !== '관리자 직접 개입' && s !== '기타 문의 접수 됨 (상담 연결 요망)' && s !== 'AI 오류 / 상담원 연결 필요') return false;
+        } else if (currentSessionFilter === '해결 완료') {
+            if (s !== '해결 완료') return false;
+        }
+        
+        if (searchQuery && !session.sessionId.toLowerCase().includes(searchQuery)) return false;
+        return true;
+    });
+
+    if (filteredSessions.length === 0) {
+        listContainer.innerHTML = '<li style="padding: 30px 20px; text-align: center; color: #888;">조건에 맞는 대화가 없습니다.</li>';
         return;
     }
 
-    allSessions.forEach(session => {
+    filteredSessions.forEach(session => {
         const li = document.createElement('li');
         li.className = 'session-item';
         
         let badgeClass = 'ongoing';
         if (session.status === '해결 완료') badgeClass = 'resolved';
-        else if (session.status === '상담원 연결 요망') badgeClass = 'escalated';
+        else if (session.status === '상담원 연결 요망' || session.status === '관리자 직접 개입' || session.status === '기타 문의 접수 됨 (상담 연결 요망)') badgeClass = 'escalated';
 
         let msgs = session.messages ? Object.values(session.messages) : [];
+        let lastMsg = msgs.length > 0 ? msgs[msgs.length - 1].text : "대화 내용 없음";
+        // Remove HTML tags for clean preview
+        lastMsg = lastMsg.replace(/<[^>]*>?/gm, '');
+        if (lastMsg && lastMsg.length > 25) lastMsg = lastMsg.substring(0, 25) + "...";
+        
+        let lastTime = msgs.length > 0 ? msgs[msgs.length - 1].time : "";
+
+        let checkboxHtml = '';
+        if (currentSessionFilter === 'ongoing' || currentSessionFilter === '상담원 개입') {
+            checkboxHtml = `<input type="checkbox" class="session-checkbox" value="${session.sessionId}" onclick="event.stopPropagation()" style="transform: scale(1.2); cursor: pointer; accent-color: var(--primary); margin-right: 10px;">`;
+        }
+
         li.innerHTML = `
-            <span class="session-id">${session.sessionId}</span>
-            <div class="session-meta">
-                <span>${session.date} (${msgs.length}개의 대화)</span>
-                <span class="badge ${badgeClass}">${session.status}</span>
+            <div style="display: flex; align-items: center; width: 100%;">
+                ${checkboxHtml}
+                <div class="chat-avatar" style="margin-right: 15px;">👤</div>
+                <div class="chat-info" style="flex: 1;">
+                <div class="chat-header-row">
+                    <span class="session-id">${session.sessionId}</span>
+                    <span class="chat-time">${lastTime || session.date || ''}</span>
+                </div>
+                <div class="chat-preview-row">
+                    <span class="chat-preview">${lastMsg}</span>
+                    <span class="badge ${badgeClass}">${session.status}</span>
+                </div>
+            </div>
             </div>
         `;
 
@@ -90,6 +331,29 @@ function renderSessionList() {
 
 let currentSelectedSessionId = null;
 
+window.resolveSession = function(sessionId) {
+    if(!confirm("이 세션을 '해결 완료' 상태로 변경하시겠습니까?")) return;
+    
+    db.ref('sessions/' + sessionId).update({
+        status: "해결 완료",
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+        const timeNow = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        // Add a system notice message to the chat
+        let newRef = db.ref('sessions/' + sessionId + '/messages').push();
+        newRef.set({
+            id: newRef.key,
+            sender: "admin",
+            text: "관리자에 의해 상담이 종료(완료) 되었습니다.",
+            time: timeNow
+        });
+        alert("성공적으로 상담완료 처리 되었습니다.");
+    }).catch(e => {
+        console.error(e);
+        alert("상태 변경에 실패했습니다.");
+    });
+};
+
 function showSessionDetail(session) {
     currentSelectedSessionId = session.sessionId;
     const adminReplyContainer = document.getElementById('admin-reply-container');
@@ -101,13 +365,13 @@ function showSessionDetail(session) {
     const headerStatus = document.getElementById('detail-status');
     const messagesContainer = document.getElementById('detail-messages');
 
-    headerTitle.textContent = `대화 상세: ${session.sessionId}`;
     headerTitle.style.display = 'flex';
     headerTitle.style.alignItems = 'center';
     headerTitle.style.gap = '10px';
     headerTitle.style.flexWrap = 'wrap';
-    headerTitle.innerHTML = `대화 상세: ${session.sessionId}
-        <button onclick="saveSessionAsKnowledge('${session.sessionId}')" style="padding: 6px 14px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap;">🧠 모범답변 저장</button>`;
+    headerTitle.innerHTML = `<span style="margin-right: 5px;">대화 상세: ${session.sessionId}</span>
+        <button onclick="saveSessionAsKnowledge('${session.sessionId}')" style="padding: 6px 14px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap;">🧠 모범답변 저장</button>
+        <button onclick="resolveSession('${session.sessionId}')" style="padding: 6px 14px; background: var(--primary); color: var(--text-main); border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap;">✅ 상담완료 처리</button>`;
     
     headerStatus.style.display = 'inline-block';
     headerStatus.className = 'badge';

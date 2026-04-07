@@ -1,4 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { onValueWritten } = require("firebase-functions/v2/database");
 const logger = require("firebase-functions/logger");
 const { defineSecret } = require("firebase-functions/params");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -74,4 +75,74 @@ ${knowledgeContext}`;
             res.status(500).json({ error: "Failed to get response from Gemini." });
         }
     });
+});
+
+// ==== 텔레그램 알림 발송 트리거 ====
+exports.onSessionUpdated = onValueWritten({ ref: "/sessions/{sessionId}", instance: "zero-medical-cs-260406-default-rtdb", region: "asia-southeast1" }, async (event) => {
+    const before = event.data.before.val();
+    const after = event.data.after.val();
+    
+    // 데이터가 삭제된 경우 무시
+    if (!after) return;
+    
+    const sessionId = event.params.sessionId;
+    let shouldNotify = false;
+    let messageBody = "";
+    
+    const escalatedStatuses = ['상담원 연결 요망', '관리자 직접 개입', '기타 문의 접수 됨 (상담 연결 요망)'];
+    const isNowEscalated = escalatedStatuses.includes(after.status);
+    
+    // 1. 신규 세션 접수
+    if (!before) {
+        shouldNotify = true;
+        messageBody = `✨ [새 고객 접속]\n세션 ID: ${sessionId}\n새로운 상담이 시작되었습니다.`;
+    } else {
+        const wasEscalated = escalatedStatuses.includes(before.status);
+        
+        // 2. 관리자/상담원 개입 상태로 전환됨
+        if (!wasEscalated && isNowEscalated) {
+            shouldNotify = true;
+            messageBody = `🚨 [상담원 호출]\n세션 ID: ${sessionId}에서 상담원을 호출하고 있습니다!\n현재 상태: ${after.status}`;
+        } 
+        // 3. 이미 인입된 상태에서 고객이 '새 메시지'를 보냄
+        else if (isNowEscalated) {
+            const beforeMsgs = before.messages ? Object.keys(before.messages).length : 0;
+            const afterMsgs = after.messages ? Object.keys(after.messages).length : 0;
+            if (afterMsgs > beforeMsgs) {
+                const msgsList = Object.values(after.messages);
+                const lastMsg = msgsList[msgsList.length - 1];
+                // 사용자가 보낸 메시지만 알림
+                if (lastMsg && lastMsg.sender === "user") {
+                    shouldNotify = true;
+                    // HTML 태그 제거
+                    const cleanText = lastMsg.text.replace(/<[^>]*>?/gm, '');
+                    const previewText = cleanText.length > 50 ? cleanText.substring(0, 50) + '...' : cleanText;
+                    messageBody = `💬 [새 메시지] ${sessionId} 세션:\n"${previewText}"`;
+                }
+            }
+        }
+    }
+    
+    // 알림 조건 만족 시 텔레그램 전송
+    if (shouldNotify) {
+        const TELEGRAM_TOKEN = "8631188369:AAGYHctTY2uc-fVGrC1tpYzIX54e9H3tnSE";
+        const CHAT_ID = "-5160518322"; 
+        const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+        
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: CHAT_ID,
+                    text: messageBody
+                })
+            });
+            if (!res.ok) {
+                logger.error("텔레그램 전송 실패:", await res.text());
+            }
+        } catch (e) {
+            logger.error("텔레그램 API 호출 에러:", e);
+        }
+    }
 });

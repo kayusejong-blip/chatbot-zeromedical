@@ -16,14 +16,14 @@
         <aside class="sidebar">
             <div class="brand">
                 <h2>🛠 CS Admin</h2>
-                <span class="version">v4.10</span>
+                <span class="version">v4.12</span>
             </div>
             <nav class="menu">
                 <a href="#" class="active" onclick="switchTab('sessions', event)">최근 채팅 내역</a>
                 <a href="#" onclick="switchTab('videos', event)">버튼 트리 맞춤 답변 관리</a>
                 <a href="#" onclick="switchTab('knowledge', event)">🧠 AI 학습 데이터</a>
                 <a href="#" onclick="switchTab('changelog', event)">버전 업데이트 창고</a>
-                <a href="index.html?v=4.9" style="margin-top:auto;" target="_blank">사용자 화면 미리보기</a>
+                <a href="index.html?v=4.12" style="margin-top:auto;" target="_blank">사용자 화면 미리보기</a>
             </nav>
         </aside>
 
@@ -31,15 +31,36 @@
         <main class="main-content">
             <header class="topbar">
                 <h1 id="page-title">실시간 관리자 대시보드</h1>
-                <div class="stats">
+                <div class="stats" style="display:flex; align-items:center; gap: 10px;">
                     <span id="total-sessions">총 세션: 0</span>
+                    <button id="btn-enable-alarm" onclick="enableAlarms()" style="padding: 5px 10px; background: #fee2e2; color: #991b1b; border: 1px solid #f87171; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">🔕 알림 꺼짐 (켜기 클릭)</button>
                 </div>
             </header>
 
             <div class="dashboard-body" id="view-sessions">
                 <!-- Session List -->
                 <div class="session-list-container">
-                    <h3>채팅 세션 목록</h3>
+                    <div class="chat-tabs" style="display: flex; justify-content: space-between; overflow-x: auto; white-space: nowrap;">
+                        <button class="active" id="tab-filter-ongoing" onclick="setSessionFilter('ongoing')" style="flex: 1; padding: 12px 5px; font-size: 0.85rem; border: none; background: transparent; cursor: pointer; border-bottom: 2px solid transparent;">진행중 상담</button>
+                        <button id="tab-filter-req" onclick="setSessionFilter('상담원 개입')" style="flex: 1; padding: 12px 5px; font-size: 0.85rem; border: none; background: transparent; cursor: pointer; border-bottom: 2px solid transparent;">상담원 개입</button>
+                        <button id="tab-filter-done" onclick="setSessionFilter('해결 완료')" style="flex: 1; padding: 12px 5px; font-size: 0.85rem; border: none; background: transparent; cursor: pointer; border-bottom: 2px solid transparent;">상담완료</button>
+                        <button id="tab-filter-all" onclick="setSessionFilter('all')" style="flex: 1; padding: 12px 5px; font-size: 0.85rem; border: none; background: transparent; cursor: pointer; border-bottom: 2px solid transparent;">전체</button>
+                    </div>
+                    <div class="chat-toolbar">
+                        <div class="search-bar" style="padding:0; border:none; flex:1; margin-right:10px;">
+                            <input type="text" id="session-search" placeholder="세션 ID 검색..." oninput="renderSessionList()">
+                        </div>
+                        <div class="toolbar-actions">
+                            <button class="toolbar-btn" onclick="renderSessionList()">🔄 새로고침</button>
+                        </div>
+                    </div>
+                    <!-- 일괄 처리용 툴바 -->
+                    <div id="bulk-action-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid var(--border-color); background: #f9fafb;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: #374151;">
+                            <input type="checkbox" id="bulk-select-all" onclick="toggleAllSessions(this.checked)" style="transform: scale(1.2); accent-color: var(--primary); cursor: pointer;"> 앞의 체크박스로 전체 선택
+                        </label>
+                        <button onclick="resolveSelectedSessions()" style="padding: 6px 12px; background: var(--primary); color: #111827; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">✅ 선택 항목 상담완료</button>
+                    </div>
                     <ul class="session-list" id="session-list">
                         <!-- Sessions 정렬될 위치 -->
                     </ul>
@@ -82,7 +103,20 @@
                     <h2 style="color: white; font-size: 1.25rem; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">📝 시스템 변경 내역(업데이트 로그)</h2>
                     <ul class="log-list" style="list-style: none; display: flex; flex-direction: column; gap: 20px; padding: 0;">
                         <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
-                            <span class="log-version" style="background: #10b981; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.10</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <span class="log-version" style="background: #10b981; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.12</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>상담완료 처리 기능 추가:</strong> 관리자가 채팅 내역 상세창에서 '상담완료 처리' 버튼을 클릭하여 수동으로 해당 세션을 완료(resolved) 처리할 수 있도록 기능이 도입되었습니다. 완료 시 사용자에게 시스템 안내 문구가 발송됩니다.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: #4B5563; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.11</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>Kakao CS 스타일 UI/UX 개편:</strong> 관리자 대시보드 테마, 채팅 목록 아바타 및 말풍선 UI를 모던하고 친숙한 카카오 채널 관리자 스타일로 업그레이드했습니다.<br>
+                                - <strong>필터 및 검색바 추가:</strong> 상담 상태별(전체/상담원개입/완료) 탭 필터와 세션 ID를 실시간으로 검색할 수 있는 기능을 추가했습니다.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: #4B5563; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.10</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
                             <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
                                 - <strong>안내 문구 추가 및 양식 디자인 개선:</strong> 챗봇 데이터베이스 전역을 검사하여 접수 양식 템플릿을 번호 리스트 형태로 정리하고 안내 문구를 추가했습니다.<br>
                                 - <strong>UI 중복 버튼 수정:</strong> fallback 메뉴에서 '처음으로 돌아가기' 버튼이 여러 개 렌더링되던 버그를 해결했습니다.
