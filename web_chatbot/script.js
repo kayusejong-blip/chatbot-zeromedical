@@ -134,7 +134,7 @@ function handleNode(node, isBack = false) {
         let videoHtml = "";
         // 커스텀 텍스트가 있으면 무조건 그것을 기본 본문으로 사용
         if (customText) {
-            videoHtml += customText + "<br><br>";
+            videoHtml += customText.replace(/\n/g, '<br>') + "<br><br>";
         } else {
             videoHtml += `아래 영상을 참고해서 점검해 보세요 😊<br><br>`;
         }
@@ -300,24 +300,27 @@ function showOptions(options) {
     }
 
     // 뒤로 가기 / 처음으로 가기 버튼 그룹 추가
+    const hasRestart = options.some(opt => opt.next === "RESTART");
     if (nodeHistory.length > 0) {
         // 처음으로 가기 버튼
-        const homeBtn = document.createElement("button");
-        homeBtn.className = "option-btn home-btn";
-        homeBtn.innerHTML = `<span>🏠 처음 화면으로 돌아가기</span>`;
-        homeBtn.style.backgroundColor = "#F9FAFB";
-        homeBtn.style.color = "#4B5563";
-        homeBtn.style.border = "1px solid #D1D5DB";
-        
-        homeBtn.onclick = () => {
-            if (nextTimeout) clearTimeout(nextTimeout);
-            container.innerHTML = "";
-            addMessage("처음으로 돌아가기", "user");
-            setTimeout(() => {
-                startFlow();
-            }, 300);
-        };
-        container.appendChild(homeBtn);
+        if (!hasRestart) {
+            const homeBtn = document.createElement("button");
+            homeBtn.className = "option-btn home-btn";
+            homeBtn.innerHTML = `<span>🏠 처음 화면으로 돌아가기</span>`;
+            homeBtn.style.backgroundColor = "#F9FAFB";
+            homeBtn.style.color = "#4B5563";
+            homeBtn.style.border = "1px solid #D1D5DB";
+            
+            homeBtn.onclick = () => {
+                if (nextTimeout) clearTimeout(nextTimeout);
+                container.innerHTML = "";
+                addMessage("처음으로 돌아가기", "user");
+                setTimeout(() => {
+                    startFlow();
+                }, 300);
+            };
+            container.appendChild(homeBtn);
+        }
 
         // 이전으로 가기 버튼
         const backBtn = document.createElement("button");
