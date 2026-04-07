@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>CS Admin 대시보드</title>
-    <link rel="stylesheet" href="admin.css?v=4.10">
+    <link rel="stylesheet" href="admin.css?v=4.13">
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -16,14 +16,14 @@
         <aside class="sidebar">
             <div class="brand">
                 <h2>🛠 CS Admin</h2>
-                <span class="version">v4.10</span>
+                <span class="version">v4.13</span>
             </div>
             <nav class="menu">
                 <a href="#" class="active" onclick="switchTab('sessions', event)">최근 채팅 내역</a>
                 <a href="#" onclick="switchTab('videos', event)">버튼 트리 맞춤 답변 관리</a>
                 <a href="#" onclick="switchTab('knowledge', event)">🧠 AI 학습 데이터</a>
                 <a href="#" onclick="switchTab('changelog', event)">버전 업데이트 창고</a>
-                <a href="index.html?v=4.9" style="margin-top:auto;" target="_blank">사용자 화면 미리보기</a>
+                <a href="index.html?v=4.13" style="margin-top:auto;" target="_blank">사용자 화면 미리보기</a>
             </nav>
         </aside>
 
@@ -82,7 +82,13 @@
                     <h2 style="color: white; font-size: 1.25rem; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">📝 시스템 변경 내역(업데이트 로그)</h2>
                     <ul class="log-list" style="list-style: none; display: flex; flex-direction: column; gap: 20px; padding: 0;">
                         <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
-                            <span class="log-version" style="background: #10b981; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.10</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <span class="log-version" style="background: #10b981; color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.13</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
+                            <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
+                                - <strong>실시간 텔레그램 알림(단톡방) 연동 완료:</strong> 신규 접속, 상담원 호출, 개입 후 신규 메시지 수신 시 관리자 단톡방으로 푸시 알림 발송 기능 탑재. 백엔드(Firebase Functions)와 텔레그램 봇 완벽 연동.
+                            </p>
+                        </li>
+                        <li style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 16px;">
+                            <span class="log-version" style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-right: 8px;">v4.10</span><span class="log-date" style="color: #9CA3AF; font-size: 0.8rem;">26.04.07</span>
                             <p class="log-desc" style="margin-top: 12px; color: #E5E7EB; font-size: 0.9rem; line-height: 1.6;">
                                 - <strong>안내 문구 추가 및 양식 디자인 개선:</strong> 챗봇 데이터베이스 전역을 검사하여 접수 양식 템플릿을 번호 리스트 형태로 정리하고 안내 문구를 추가했습니다.<br>
                                 - <strong>UI 중복 버튼 수정:</strong> fallback 메뉴에서 '처음으로 돌아가기' 버튼이 여러 개 렌더링되던 버그를 해결했습니다.
@@ -221,9 +227,9 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="firebase-config.js?v=4.10"></script>
+    <script src="firebase-config.js?v=4.13"></script>
     
-    <script src="data.js?v=4.10"></script>
-    <script src="admin.js?v=4.10"></script>
+    <script src="data.js?v=4.13"></script>
+    <script src="admin.js?v=4.13"></script>
 </body>
 </html>
