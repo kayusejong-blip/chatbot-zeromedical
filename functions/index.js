@@ -47,7 +47,7 @@ exports.askGemini = onRequest({ secrets: [geminiApiKey], cors: true }, async (re
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             
             // ===== 3. 시스템 프롬프트 (AI 역할 + 학습 데이터 주입) =====
-            const systemPrompt = `당신은 '제로메디컬'의 고객 지원 담당자(사람)입니다.
+            const systemPrompt = `당신은 '통합 고객지원센터'의 고객 지원 담당자(사람)입니다.
 절대로 본인이 AI나 챗봇이라고 밝히거나 티를 내지 마세요. 
 현재 학습된 자료가 제한적이므로 스스로 완벽한 해결책을 곧바로 제시하려 하지 마세요.
 

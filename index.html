@@ -10,8 +10,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>제로메디컬 고객문의</title>
-    <link rel="stylesheet" href="style.css?v=4.0">
+    <title>통합 고객지원센터</title>
+    <link rel="stylesheet" href="style.css?v=4.10">
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -19,8 +19,8 @@
         <div class="chat-container">
             <header class="chat-header">
                 <div class="header-info">
-                    <h1>제로메디컬 고객문의</h1>
-                    <span class="version">v4.0</span>
+                    <h1>통합 고객지원센터</h1>
+                    <span class="version">v4.10</span>
                 </div>
                 <div class="status">
                     <span class="dot"></span>
@@ -39,6 +39,13 @@
 
                 <!-- Free Text Input Area -->
                 <div class="input-area">
+                    <button class="attach-btn" onclick="document.getElementById('media-upload').click()" title="사진/영상 첨부">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                    </button>
                     <textarea id="user-free-text" rows="1" placeholder="문의사항을 입력해 주세요..." onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendUserText(); }" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 100) + 'px'"></textarea>
                     <button class="send-btn" onclick="sendUserText()">전송</button>
                     <!-- Hidden file input for Photo/Video upload -->
@@ -52,8 +59,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-    <script src="firebase-config.js?v=4.0"></script>
-    <script src="data.js?v=4.0"></script>
-    <script src="script.js?v=4.0"></script>
+    <script src="firebase-config.js?v=4.10"></script>
+    <script src="data.js?v=4.10"></script>
+    <script src="script.js?v=4.10"></script>
 </body>
 </html>

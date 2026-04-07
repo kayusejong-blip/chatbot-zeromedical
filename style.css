@@ -258,6 +258,24 @@ body {
     gap: 10px;
     background: var(--chat-bg);
     border-top: 1px solid #F3F4F6;
+    align-items: center;
+}
+
+.attach-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 4px;
+    transition: color 0.2s, transform 0.1s;
+}
+
+.attach-btn:active {
+    transform: scale(0.95);
+    color: var(--primary);
 }
 
 .input-area textarea {

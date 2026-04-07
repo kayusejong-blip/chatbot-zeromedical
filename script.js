@@ -134,7 +134,7 @@ function handleNode(node, isBack = false) {
         let videoHtml = "";
         // 커스텀 텍스트가 있으면 무조건 그것을 기본 본문으로 사용
         if (customText) {
-            videoHtml += customText + "<br><br>";
+            videoHtml += customText.replace(/\n/g, '<br>') + "<br><br>";
         } else {
             videoHtml += `아래 영상을 참고해서 점검해 보세요 😊<br><br>`;
         }
@@ -256,9 +256,9 @@ function showOptions(options) {
                 nodeHistory.push(currentNode);
             }
             
+            container.innerHTML = ""; // 옵션 지우기
             // 사용자 응답 메시지 표시
             addMessage(opt.label, "user");
-            container.innerHTML = ""; // 옵션 지우기
             
             // 다음 흐름 처리 (opt.id를 triggerId로 추가 전달!)
             handleNext(opt.next, opt.video_key, opt.id);
@@ -282,10 +282,10 @@ function showOptions(options) {
             
             nodeHistory.push(currentNode);
             
+            container.innerHTML = ""; // 옵션 지우기
             addMessage("찾는 항목이 없어요 (기타 문의)", "user");
-            container.innerHTML = "";
             
-            let fallbackMsg = "✅ **찾으시는 항목이 없으신가요?**<br><br>화면 하단의 최하단 <strong>채팅 입력창</strong>에 겪고 계신 문제나 문의사항을 텍스트로 자세히 적어주시거나, 아래 버튼을 눌러 파손된 부위 등의 <strong>사진/영상</strong>을 첨부해주세요.<br><br>담당 엔지니어가 신속하게 확인 후 안내해 드리겠습니다. 🧑‍⚕️";
+            let fallbackMsg = "✅ 찾으시는 항목이 없으신가요?<br><br>화면 하단의 최하단 <strong>채팅 입력창</strong>에 겪고 계신 문제나 문의사항을 텍스트로 자세히 적어주시거나, 아래 버튼을 눌러 문제가 되는 부분의 <strong>사진/영상</strong>을 첨부해주세요.<br><br>상담원이 신속하게 확인 후 안내해 드리겠습니다. 🧑‍⚕️";
             
             setTimeout(() => {
                 addMessage(fallbackMsg, "bot");
@@ -300,24 +300,27 @@ function showOptions(options) {
     }
 
     // 뒤로 가기 / 처음으로 가기 버튼 그룹 추가
+    const hasRestart = options.some(opt => opt.next === "RESTART");
     if (nodeHistory.length > 0) {
         // 처음으로 가기 버튼
-        const homeBtn = document.createElement("button");
-        homeBtn.className = "option-btn home-btn";
-        homeBtn.innerHTML = `<span>🏠 처음 화면으로 돌아가기</span>`;
-        homeBtn.style.backgroundColor = "#F9FAFB";
-        homeBtn.style.color = "#4B5563";
-        homeBtn.style.border = "1px solid #D1D5DB";
-        
-        homeBtn.onclick = () => {
-            if (nextTimeout) clearTimeout(nextTimeout);
-            addMessage("처음으로 돌아가기", "user");
-            container.innerHTML = "";
-            setTimeout(() => {
-                startFlow();
-            }, 300);
-        };
-        container.appendChild(homeBtn);
+        if (!hasRestart) {
+            const homeBtn = document.createElement("button");
+            homeBtn.className = "option-btn home-btn";
+            homeBtn.innerHTML = `<span>🏠 처음 화면으로 돌아가기</span>`;
+            homeBtn.style.backgroundColor = "#F9FAFB";
+            homeBtn.style.color = "#4B5563";
+            homeBtn.style.border = "1px solid #D1D5DB";
+            
+            homeBtn.onclick = () => {
+                if (nextTimeout) clearTimeout(nextTimeout);
+                container.innerHTML = "";
+                addMessage("처음으로 돌아가기", "user");
+                setTimeout(() => {
+                    startFlow();
+                }, 300);
+            };
+            container.appendChild(homeBtn);
+        }
 
         // 이전으로 가기 버튼
         const backBtn = document.createElement("button");
@@ -329,8 +332,8 @@ function showOptions(options) {
         
         backBtn.onclick = () => {
             if (nextTimeout) clearTimeout(nextTimeout);
-            addMessage("이전 단계로", "user");
             container.innerHTML = "";
+            addMessage("이전 단계로", "user");
             let prevNode = nodeHistory.pop();
             setTimeout(() => {
                 handleNode(prevNode, true);
@@ -347,11 +350,13 @@ function addMessage(text, sender, textForStorage = null, attachment = null) {
     msgDiv.innerHTML = text; 
     container.appendChild(msgDiv);
     
-    // 부드러운 스크롤 이동
-    container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-    });
+    // 부드러운 스크롤 이동 (DOM 렌더링 후 정확한 높이 계산을 위해 미세한 지연 추가)
+    setTimeout(() => {
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 50);
 
     // Firebase 실시간 업데이트
     let newRef = db.ref('sessions/' + currentSessionId + '/messages').push();
@@ -433,7 +438,7 @@ function handleFileUpload(event) {
                  });
                  
                  setTimeout(() => {
-                     addMessage("업로드가 완료되었습니다. 담당 엔지니어가 사진/영상을 확인한 후 신속하게 연락드리겠습니다. 🛠", "bot");
+                     addMessage("업로드가 완료되었습니다. 상담원이 사진/영상을 확인한 후 신속하게 연락드리겠습니다. 🛠", "bot");
                      saveSessionToStorage("첨부파일 접수 완료 / 상담 대기");
                      showOptions([{ label: "🔄 처음으로 돌아가기", next: "RESTART" }]);
                  }, 1500);
