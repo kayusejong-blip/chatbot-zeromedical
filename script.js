@@ -51,11 +51,26 @@ function initFirebaseSync() {
         }
     });
 
-    // 상태 동기화 (관리자 개입 여부 파악)
+    // 상태 동기화 (관리자 개입 여부 파악 및 상태별 제어)
     db.ref('sessions/' + currentSessionId).on('value', snapshot => {
          let data = snapshot.val();
          if(data && data.status) {
              currentSessionStatus = data.status;
+             
+             // 관리자가 '해결 완료' 처리한 경우 입력창 비활성화
+             const input = document.getElementById("user-free-text");
+             const sendBtn = document.querySelector(".send-btn");
+             const attachBtn = document.querySelector(".attach-btn");
+             
+             if (currentSessionStatus === '해결 완료') {
+                 if(input) { input.disabled = true; input.placeholder = "종료된 상담입니다."; }
+                 if(sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.5'; }
+                 if(attachBtn) { attachBtn.disabled = true; attachBtn.style.opacity = '0.5'; }
+             } else {
+                 if(input) { input.disabled = false; input.placeholder = "문의사항을 입력해 주세요..."; }
+                 if(sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
+                 if(attachBtn) { attachBtn.disabled = false; attachBtn.style.opacity = '1'; }
+             }
          }
     });
 
@@ -464,6 +479,7 @@ window.sendUserText = async function() {
     const text = input.value.trim();
     if (!text) return;
     if (isAiProcessing) return; // 중복 요청 방지
+    if (currentSessionStatus === '해결 완료') return; // 완료된 세션 차단
     
     input.value = '';
     input.style.height = 'auto'; // 리셋

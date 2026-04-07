@@ -1,14 +1,15 @@
 :root {
-    --primary: #4F46E5;
-    --primary-light: #6366F1;
-    --primary-dark: #4338CA;
-    --bg-color: #F3F4F6;
+    --primary: #FEE500;
+    --primary-dark: #E6D000;
+    --primary-text: #111111;
+    --bg-color: #F4F5F7;
     --panel-bg: #FFFFFF;
-    --sidebar-bg: #111827;
-    --sidebar-text: #E5E7EB;
-    --text-main: #1F2937;
-    --text-muted: #6B7280;
-    --border-color: #E5E7EB;
+    --sidebar-bg: #FFFFFF;
+    --sidebar-border: #DDE0E3;
+    --sidebar-text: #4C4C4C;
+    --text-main: #111111;
+    --text-muted: #888888;
+    --border-color: #DDE0E3;
 }
 
 * {
@@ -35,49 +36,59 @@ body {
     color: var(--sidebar-text);
     display: flex;
     flex-direction: column;
+    border-right: 1px solid var(--sidebar-border);
 }
 
 .brand {
     padding: 24px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .brand h2 {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 700;
+    color: var(--text-main);
 }
 
 .version {
     font-size: 0.75rem;
-    background: var(--primary);
-    padding: 2px 6px;
-    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: 12px;
     font-weight: 600;
+    border: 1px solid var(--border-color);
 }
 
 .menu {
-    padding: 20px 0;
+    padding: 16px 10px;
     display: flex;
     flex-direction: column;
     flex: 1;
+    gap: 4px;
 }
 
 .menu a {
     color: var(--sidebar-text);
     text-decoration: none;
-    padding: 12px 24px;
+    padding: 12px 16px;
     font-weight: 500;
+    border-radius: 8px;
     transition: all 0.2s;
-    border-left: 4px solid transparent;
+    font-size: 0.95rem;
 }
 
-.menu a:hover, .menu a.active {
-    background: rgba(255,255,255,0.05);
-    border-left-color: var(--primary);
-    color: white;
+.menu a:hover {
+    background: var(--bg-color);
+}
+
+.menu a.active {
+    background: var(--bg-color);
+    color: var(--text-main);
+    font-weight: 700;
 }
 
 /* Main Content */
@@ -105,10 +116,11 @@ body {
 }
 
 .stats {
-    background: var(--primary);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 12px;
+    background: var(--bg-color);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 6px 14px;
+    border-radius: 16px;
     font-weight: 600;
     font-size: 0.9rem;
 }
@@ -123,10 +135,10 @@ body {
 
 /* Session List Container */
 .session-list-container {
-    width: 350px;
+    width: 380px;
     background: var(--panel-bg);
-    border-radius: 20px;
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -134,10 +146,76 @@ body {
 }
 
 .session-list-container h3 {
-    padding: 20px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 1.1rem;
+    padding: 16px 20px;
+    font-size: 1rem;
+    font-weight: 700;
 }
+
+/* Kakao Style Tab & Toolbar */
+.chat-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--panel-bg);
+}
+.chat-tabs button {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 12px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+.chat-tabs button.active {
+    color: var(--text-main);
+    border-bottom: 2px solid var(--text-main);
+}
+
+.chat-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #F9FAFB;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.toolbar-btn {
+    border: 1px solid var(--border-color);
+    background: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text-main);
+    display:flex;
+    align-items:center;
+    gap:4px;
+}
+.toolbar-btn:hover { background: #f3f4f6; }
+
+.search-bar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+.search-bar input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    background: var(--bg-color);
+    outline: none;
+}
+.search-bar input:focus { border-color: #BDBDBD; background: white; }
 
 .session-list {
     list-style: none;
@@ -146,42 +224,90 @@ body {
 }
 
 .session-item {
-    padding: 16px 20px;
-    border-bottom: 1px solid #F3F4F6;
+    padding: 14px 16px;
+    border-bottom: 1px solid #F4F5F7;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
-.session-item:hover, .session-item.active {
+.session-item:hover {
     background: #F9FAFB;
-    border-left: 4px solid var(--primary);
+}
+.session-item.active {
+    background: #FFF7E6;
+}
+
+/* Avatar area */
+.chat-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    background: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+/* Content area */
+.chat-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chat-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
 }
 
 .session-id {
     font-weight: 600;
     font-size: 0.95rem;
     color: var(--text-main);
-    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.session-meta {
+.chat-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.chat-preview-row {
     display: flex;
     justify-content: space-between;
-    margin-top: 8px;
-    font-size: 0.8rem;
+    align-items: center;
+}
+
+.chat-preview {
+    font-size: 0.85rem;
     color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
 }
 
 .badge {
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.7rem;
 }
 
-.badge.ongoing { background: #E0E7FF; color: var(--primary-dark); }
-.badge.resolved { background: #D1FAE5; color: #065F46; }
-.badge.escalated { background: #FEE2E2; color: #991B1B; }
+.badge.ongoing { background: #E5E7EB; color: #4B5563; }
+.badge.resolved { background: #E8F5E9; color: #2E7D32; }
+.badge.escalated { background: #FFEBEE; color: #C62828; }
 
 /* Chat Detail View */
 .chat-detail-container {
@@ -210,7 +336,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    background: #F9FAFB;
+    background: #B2C7D9; /* Kakao default chat background */
 }
 
 .empty-state {
@@ -219,41 +345,36 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: var(--text-muted);
+    color: rgba(0,0,0,0.4);
     font-size: 1.1rem;
-    line-height: 1.5;
 }
 
 /* Chat bubble styling for detail view */
 .detail-msg {
     max-width: 70%;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 12px;
     font-size: 0.95rem;
     line-height: 1.5;
     position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.detail-msg.bot {
-    background: white;
-    border: 1px solid var(--border-color);
-    align-self: flex-start;
-    border-bottom-left-radius: 4px;
-}
-
+/* User (customer) msg is left side in CS view */
 .detail-msg.user {
-    background: var(--primary);
-    color: white;
-    align-self: flex-end;
-    border-bottom-right-radius: 4px;
+    background: white;
+    color: var(--text-main);
+    align-self: flex-start;
+    border-top-left-radius: 2px;
 }
 
-.detail-msg.admin {
-    background: #10B981;
-    color: white;
+/* Admin/Bot msg is right side in CS view (yellow) */
+.detail-msg.bot, .detail-msg.admin {
+    background: #FEEC34; /* Kakao bubble yellow */
+    color: var(--text-main);
     align-self: flex-end;
-    border-bottom-right-radius: 4px;
-    box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+    border-top-right-radius: 2px;
+    border: none;
 }
 
 
